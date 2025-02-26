@@ -1,13 +1,7 @@
 const express = require('express');
-const path = require('path');
+const router = express.Router();
 const twilio = require('twilio');
 require('dotenv').config();
-
-const router = express.Router();
-router.use(express.json());
-
-// Serve static files
-router.use(express.static(path.join(__dirname, 'public')));
 
 // In-memory storage (simple example - not production ready)
 const rateLimits = new Map();
@@ -20,10 +14,33 @@ const twilioClient = twilio(
 );
 
 // Twilio Verify service setup
+
+console.log('Verify Service SID:', process.env.TWILIO_VERIFY_SERVICE_SID);
+
+// Add this validation at the top
+if (!process.env.TWILIO_VERIFY_SERVICE_SID) {
+  console.error('❌ TWILIO_VERIFY_SERVICE_SID is missing in .env file');
+  process.exit(1);
+}
+
+// Remove .trim() and use direct assignment
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+// Add validation for the service SID format
+if (!verifyServiceSid.startsWith('VA')) {
+  console.error('❌ Invalid Verify Service SID format. Should start with "VA"');
+  process.exit(1);
+}
+
+// Add validation check
+if (!twilioClient) {
+  console.error('Twilio client not initialized!');
+  process.exit(1);
+}
 
 // Updated send-otp endpoint
 router.post('/send-otp', async (req, res) => {
+  console.log('Request Body:', req.body);
   const { mobile } = req.body;
   
   if (!/^\+\d{1,3}\d{9,15}$/.test(mobile)) {
@@ -33,7 +50,7 @@ router.post('/send-otp', async (req, res) => {
   try {
     // Simple in-memory rate limiting
     const attempts = rateLimits.get(mobile) || 0;
-    if (attempts >= 3) {
+    if (attempts > 3) {
       return res.status(429).json({ error: 'Too many attempts' });
     }
 
@@ -48,8 +65,11 @@ router.post('/send-otp', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('OTP send error:', error);
-    res.status(500).json({ error: 'Failed to send OTP' });
+    console.error('Full Error Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to send OTP',
+      details: error.message
+    });
   }
 });
 
