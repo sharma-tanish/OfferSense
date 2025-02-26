@@ -5,12 +5,39 @@ import { useNavigate } from "react-router-dom";
 
 const Login = () => {
     const [mobile, setMobile] = useState("");
+    const [countryCode, setCountryCode] = useState('+91');
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Mobile Number:", "+91" + mobile);
-        navigate("/otp");
+        setError('');
+        console.log("Mobile Number:", countryCode + mobile);
+        
+        try {
+            const response = await fetch('/api/otp/send-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mobile: countryCode + mobile }),
+            });
+
+            if (!response.ok) {
+                if (response.status === 429) {
+                    throw new Error('Too many attempts. Please try again later.');
+                }
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            navigate("/otp", { state: { mobile } });
+        } catch (err) {
+            if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+                setError('Network error - please check your connection');
+            } else {
+                setError(err.message);
+            }
+        }
     };
 
     return (
@@ -39,7 +66,7 @@ const Login = () => {
                             <div className="grid gap-2">
                                 <label className="text-white" htmlFor="mobile">Enter your mobile number to login!</label>
                                 <div className="flex items-center border border-zinc-800 rounded-lg bg-zinc-950 px-4 py-3">
-                                    <span className="text-white mr-2">+91</span>
+                                    <span className="text-white mr-2">{countryCode}</span>
                                     <input
                                         id="mobile"
                                         type="tel"
@@ -59,6 +86,11 @@ const Login = () => {
                                     Send OTP
                                 </button>
                             </div>
+                            {error && (
+                                <div className="text-red-500 text-sm mt-2">
+                                    {error}
+                                </div>
+                            )}
                         </form>
                     </div>
                 </div>
