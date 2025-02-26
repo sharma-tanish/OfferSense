@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const OTP = () => {
     const [otp, setOtp] = useState(new Array(6).fill(""));
     const navigate = useNavigate();
+    const location = useLocation();
+    const mobile = location.state?.mobile || ''; // Get mobile from navigation state
 
     const handleChange = (element, index) => {
         if (isNaN(element.value)) return;
@@ -25,13 +27,27 @@ const OTP = () => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const enteredOtp = otp.join("");
         console.log("Entered OTP:", enteredOtp);
-        // Add logic to verify OTP here
-        // If successful, navigate to the next page
-        navigate("/next-page"); // Replace with your desired route
+
+        // Use environment variable for base URL
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/otp/verify-otp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mobile: "+91" + mobile, code: enteredOtp }), // Ensure mobile is passed
+        });
+
+        if (response.ok) {
+            navigate("/next-page"); // Replace with your desired route
+        } else {
+            const errorData = await response.json();
+            console.error("Error verifying OTP:", errorData.error);
+            // Handle error (e.g., show a message to the user)
+        }
     };
 
     return (
