@@ -5,12 +5,29 @@ import { useNavigate } from "react-router-dom";
 
 const Login = () => {
     const [mobile, setMobile] = useState("");
+    const [countryCode, setCountryCode] = useState('+91');
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Mobile Number:", "+91" + mobile);
-        navigate("/otp");
+        console.log("Mobile Number:", countryCode + mobile);
+        
+        // Use environment variable for base URL
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/otp/send-otp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mobile: countryCode + mobile }),
+        });
+
+        if (response.ok) {
+            navigate("/otp");
+        } else {
+            const errorData = await response.json();
+            console.error("Error sending OTP:", errorData.error);
+            // Handle error (e.g., show a message to the user)
+        }
     };
 
     return (
@@ -39,7 +56,7 @@ const Login = () => {
                             <div className="grid gap-2">
                                 <label className="text-white" htmlFor="mobile">Enter your mobile number to login!</label>
                                 <div className="flex items-center border border-zinc-800 rounded-lg bg-zinc-950 px-4 py-3">
-                                    <span className="text-white mr-2">+91</span>
+                                    <span className="text-white mr-2">{countryCode}</span>
                                     <input
                                         id="mobile"
                                         type="tel"
