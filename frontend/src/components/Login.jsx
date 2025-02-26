@@ -6,27 +6,37 @@ import { useNavigate } from "react-router-dom";
 const Login = () => {
     const [mobile, setMobile] = useState("");
     const [countryCode, setCountryCode] = useState('+91');
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
         console.log("Mobile Number:", countryCode + mobile);
         
-        // Use environment variable for base URL
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/otp/send-otp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ mobile: countryCode + mobile }),
-        });
+        try {
+            const response = await fetch('/api/otp/send-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mobile: countryCode + mobile }),
+            });
 
-        if (response.ok) {
-            navigate("/otp");
-        } else {
-            const errorData = await response.json();
-            console.error("Error sending OTP:", errorData.error);
-            // Handle error (e.g., show a message to the user)
+            if (!response.ok) {
+                if (response.status === 429) {
+                    throw new Error('Too many attempts. Please try again later.');
+                }
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            navigate("/otp", { state: { mobile } });
+        } catch (err) {
+            if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+                setError('Network error - please check your connection');
+            } else {
+                setError(err.message);
+            }
         }
     };
 
@@ -76,6 +86,11 @@ const Login = () => {
                                     Send OTP
                                 </button>
                             </div>
+                            {error && (
+                                <div className="text-red-500 text-sm mt-2">
+                                    {error}
+                                </div>
+                            )}
                         </form>
                     </div>
                 </div>
