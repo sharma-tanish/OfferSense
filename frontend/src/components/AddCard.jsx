@@ -1,46 +1,65 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const AddCard = () => {
+const AddCard = ({ onAddCard }) => {
+  const navigate = useNavigate();
   const [cardData, setCardData] = useState({
     cardNumber: '',
     cardType: 'VISA',
     cardName: '',
     expiryDate: ''
   });
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:5000/api/cards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(cardData)
-      });
-      
-      if (response.ok) {
-        alert('Card added successfully!');
-        setCardData({ cardNumber: '', cardType: 'VISA', cardName: '', expiryDate: '' });
-      }
-    } catch (error) {
-      console.error('Error adding card:', error);
+    
+    // Basic validation
+    if (cardData.cardNumber.length !== 16) {
+      setError('Please enter a valid 16-digit card number');
+      return;
     }
+
+    // Create a new card object with an ID
+    const newCard = {
+      id: Date.now(), // Using timestamp as a simple ID
+      ...cardData,
+      cardNumber: cardData.cardNumber.replace(/(\d{4})/g, '$1 ').trim()
+    };
+
+    // Store in localStorage
+    const existingCards = JSON.parse(localStorage.getItem('cards') || '[]');
+    localStorage.setItem('cards', JSON.stringify([...existingCards, newCard]));
+
+    alert('Card added successfully!');
+    navigate('/my-cards');
+  };
+
+  const handleCardNumberChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+    setCardData({ ...cardData, cardNumber: value });
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-8">
         <h2 className="text-3xl font-bold mb-8 text-center text-white">Add New Card</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-100">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-200">Card Number</label>
             <input
               type="text"
-              value={cardData.cardNumber}
-              onChange={(e) => setCardData({...cardData, cardNumber: e.target.value})}
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              value={cardData.cardNumber.replace(/(\d{4})/g, '$1 ').trim()}
+              onChange={handleCardNumberChange}
+              placeholder="1234 5678 9012 3456"
+              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
               required
             />
           </div>
@@ -50,7 +69,7 @@ const AddCard = () => {
             <select
               value={cardData.cardType}
               onChange={(e) => setCardData({...cardData, cardType: e.target.value})}
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
               required
             >
               <option value="VISA">VISA</option>
@@ -64,8 +83,9 @@ const AddCard = () => {
             <input
               type="text"
               value={cardData.cardName}
-              onChange={(e) => setCardData({...cardData, cardName: e.target.value})}
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              onChange={(e) => setCardData({...cardData, cardName: e.target.value.toUpperCase()})}
+              placeholder="JOHN DOE"
+              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
               required
             />
           </div>
@@ -76,14 +96,14 @@ const AddCard = () => {
               type="month"
               value={cardData.expiryDate}
               onChange={(e) => setCardData({...cardData, expiryDate: e.target.value})}
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 ease-in-out"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 transition-all duration-300 ease-in-out"
           >
             Add Card
           </button>

@@ -6,24 +6,10 @@ const CardList = () => {
   const [cards, setCards] = useState([]);
 
   useEffect(() => {
-    fetchCards();
+    // Load cards from localStorage
+    const savedCards = JSON.parse(localStorage.getItem('cards') || '[]');
+    setCards(savedCards);
   }, []);
-
-  const fetchCards = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/cards', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCards(data);
-      }
-    } catch (error) {
-      console.error('Error fetching cards:', error);
-    }
-  };
 
   const getCardBgColor = (cardType) => {
     switch (cardType) {
@@ -54,7 +40,7 @@ const CardList = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => (
             <div 
-              key={card._id} 
+              key={card.id} 
               className={`bg-gradient-to-br ${getCardBgColor(card.cardType)} rounded-xl shadow-2xl p-6 text-white transform hover:scale-105 transition-all duration-300`}
             >
               <div className="flex justify-between items-center mb-8">
@@ -63,7 +49,7 @@ const CardList = () => {
               </div>
               <div className="space-y-4">
                 <p className="text-2xl font-mono tracking-wider">
-                  **** **** **** {card.cardNumber.slice(-4)}
+                  {card.cardNumber}
                 </p>
                 <div className="flex justify-between items-end">
                   <div>
@@ -72,12 +58,7 @@ const CardList = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-300">Expires</p>
-                    <p className="font-semibold">
-                      {new Date(card.expiryDate).toLocaleDateString('en-US', { 
-                        month: '2-digit', 
-                        year: '2-digit' 
-                      })}
-                    </p>
+                    <p className="font-semibold">{card.expiryDate}</p>
                   </div>
                 </div>
               </div>

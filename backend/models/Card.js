@@ -8,7 +8,8 @@ const CardSchema = new mongoose.Schema({
   },
   cardNumber: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   cardType: {
     type: String,
@@ -28,5 +29,8 @@ const CardSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+// Add index for faster queries
+CardSchema.index({ userId: 1, cardNumber: 1 });
 
 module.exports = mongoose.model('Card', CardSchema); 
