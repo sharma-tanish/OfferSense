@@ -1,80 +1,119 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import OtpInput from 'react-otp-input';
 
 const OTP = () => {
-    const [otp, setOtp] = useState(new Array(6).fill(""));
+    const [otp, setOtp] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
-    const mobile = location.state?.mobile || ''; // Get mobile from navigation state
+    const phone = location.state?.phone || '';
 
-    const handleChange = (element, index) => {
-        if (isNaN(element.value)) return;
-
-        setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
-
-        // Focus next input
-        if (element.value && element.nextSibling) {
-            element.nextSibling.focus();
+    useEffect(() => {
+        // Send OTP when component mounts
+        if (phone) {
+            sendOTP();
         }
-    };
+    }, [phone]);
 
-    const handleKeyDown = (e, index) => {
-        if (e.key === "Backspace" && !otp[index] && index > 0) {
-            const prevSibling = e.target.previousSibling;
-            if (prevSibling) {
-                prevSibling.focus();
+    const sendOTP = async () => {
+        try {
+            const response = await fetch('/otp/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ phone }),
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                alert('Failed to send OTP');
             }
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            alert('Failed to send OTP');
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const enteredOtp = otp.join("");
-        console.log("Entered OTP:", enteredOtp);
+        try {
+            const response = await fetch('/otp/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    phone: phone,
+                    code: otp 
+                }),
+            });
 
-        // Use environment variable for base URL
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/otp/verify-otp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ mobile: "+91" + mobile, code: enteredOtp }), // Ensure mobile is passed
-        });
+            const data = await response.json();
+            console.log('Verification response:', data); // Debug log
 
-        if (response.ok) {
-            navigate("/next-page"); // Replace with your desired route
-        } else {
-            const errorData = await response.json();
-            console.error("Error verifying OTP:", errorData.error);
-            // Handle error (e.g., show a message to the user)
+            if (data.valid || data.status === 'approved') {
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('userPhone', phone);
+                navigate('/my-cards');
+            } else {
+                alert('Invalid OTP. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error during verification:', error);
+            alert('Failed to verify OTP. Please try again.');
         }
     };
 
     return (
-        <div className="bg-black min-h-screen flex items-center justify-center">
-            <div className="flex flex-col space-y-4 w-[400px] mx-auto border border-white rounded-2xl p-10">
-                <p className="text-[32px] font-bold text-white">Enter OTP</p>
-                <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
-                    <div className="flex justify-center space-x-2">
-                        {otp.map((data, index) => (
-                            <input
-                                key={index}
-                                type="text"
-                                maxLength="1"
-                                value={data}
-                                onChange={(e) => handleChange(e.target, index)}
-                                onKeyDown={(e) => handleKeyDown(e, index)}
-                                onFocus={(e) => e.target.select()}
-                                className="w-10 h-10 text-center text-white bg-zinc-950 border border-zinc-800 rounded-lg focus:outline-none"
-                            />
-                        ))}
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8 p-8 bg-white/10 backdrop-blur-md rounded-xl">
+                <div>
+                    <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+                        Enter OTP
+                    </h2>
+                    <p className="mt-2 text-center text-sm text-gray-400">
+                        Please enter the OTP sent to {phone}
+                    </p>
+                </div>
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    <div className="flex justify-center">
+                        <OtpInput
+                            value={otp}
+                            onChange={setOtp}
+                            numInputs={4}
+                            renderInput={(props) => <input {...props} />}
+                            inputStyle={{
+                                width: '3rem',
+                                height: '3rem',
+                                margin: '0 0.5rem',
+                                fontSize: '1.5rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid #374151',
+                                backgroundColor: 'rgba(55, 65, 81, 0.5)',
+                                color: 'white',
+                                textAlign: 'center',
+                            }}
+                            containerStyle="gap-2"
+                        />
                     </div>
-                    <button
-                        type="submit"
-                        className="bg-white text-zinc-950 hover:bg-white/90 active:bg-white/80 flex w-full mt-6 items-center justify-center rounded-lg px-4 py-4 text-base font-medium cursor-pointer"
-                    >
-                        Verify OTP
-                    </button>
+                    <div>
+                        <button
+                            type="submit"
+                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Verify OTP
+                        </button>
+                    </div>
+                    <div className="text-center">
+                        <button
+                            type="button"
+                            onClick={sendOTP}
+                            className="text-indigo-400 hover:text-indigo-300 text-sm"
+                        >
+                            Resend OTP
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
