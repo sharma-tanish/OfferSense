@@ -41,14 +41,16 @@ const OTP = () => {
                 },
                 body: JSON.stringify({ 
                     mobile: mobile,
-                    code: enteredOtp  // Changed from 'otp' to 'code' to match backend
+                    code: enteredOtp
                 }),
             });
 
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
-                    navigate("/next-page");
+                    // Store the authenticated mobile number
+                    localStorage.setItem('authenticatedUser', mobile);
+                    navigate("/my-cards");
                 } else {
                     setError(data.message || "Verification failed");
                 }
@@ -58,7 +60,7 @@ const OTP = () => {
             }
         } catch (err) {
             console.error("Error verifying OTP:", err);
-            setError("Network error - please try again");
+            setError("Network error - please check your connection");
         }
     };
 
