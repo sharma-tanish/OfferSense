@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 const OTP = () => {
     const [otp, setOtp] = useState(new Array(6).fill(""));
+    const [error, setError] = useState("");  // Add error state
     const navigate = useNavigate();
     const location = useLocation();
     const mobile = location.state?.mobile || ''; // Get mobile from navigation state
@@ -29,24 +30,35 @@ const OTP = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(""); // Clear any previous errors
         const enteredOtp = otp.join("");
-        console.log("Entered OTP:", enteredOtp);
+        
+        try {
+            const response = await fetch('/api/otp/verify-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    mobile: mobile,
+                    code: enteredOtp  // Changed from 'otp' to 'code' to match backend
+                }),
+            });
 
-        // Use environment variable for base URL
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/otp/verify-otp`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ mobile: "+91" + mobile, code: enteredOtp }), // Ensure mobile is passed
-        });
-
-        if (response.ok) {
-            navigate("/next-page"); // Replace with your desired route
-        } else {
-            const errorData = await response.json();
-            console.error("Error verifying OTP:", errorData.error);
-            // Handle error (e.g., show a message to the user)
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    navigate("/next-page");
+                } else {
+                    setError(data.message || "Verification failed");
+                }
+            } else {
+                const errorData = await response.json();
+                setError(errorData.error || "Failed to verify OTP");
+            }
+        } catch (err) {
+            console.error("Error verifying OTP:", err);
+            setError("Network error - please try again");
         }
     };
 
@@ -54,6 +66,11 @@ const OTP = () => {
         <div className="bg-black min-h-screen flex items-center justify-center">
             <div className="flex flex-col space-y-4 w-[400px] mx-auto border border-white rounded-2xl p-10">
                 <p className="text-[32px] font-bold text-white">Enter OTP</p>
+                {error && (
+                    <div className="text-red-500 text-sm text-center">
+                        {error}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
                     <div className="flex justify-center space-x-2">
                         {otp.map((data, index) => (
