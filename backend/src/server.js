@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const routes = require('./routes');
-const otpRouter = require('./otp_service');
+const otpRouter = require('../routes/otp');
 
 // Update CORS configuration
 app.use(cors({
@@ -20,7 +20,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', routes);
-app.use('/otp', otpRouter);
+app.use('/api/otp', otpRouter);
 
 // Add validation middleware
 app.use((err, req, res, next) => {
