@@ -40,7 +40,7 @@ const OTP = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                    mobile: mobile,
+                    phoneNumber: mobile,
                     code: enteredOtp
                 }),
             });
@@ -52,7 +52,7 @@ const OTP = () => {
                     localStorage.setItem('authenticatedUser', mobile);
                     navigate("/my-cards");
                 } else {
-                    setError(data.message || "Verification failed");
+                    setError(data.error || "Verification failed");
                 }
             } else {
                 const errorData = await response.json();

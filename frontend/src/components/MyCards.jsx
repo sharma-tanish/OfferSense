@@ -1,31 +1,49 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaCreditCard, FaPlus, FaTrash, FaGift } from 'react-icons/fa';
+import api from '../utils/api';
 
 const MyCards = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState([]);
   const [userPhone, setUserPhone] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Check if user is authenticated
     const authenticatedUser = localStorage.getItem('authenticatedUser');
     if (!authenticatedUser) {
       navigate('/login');
-      return;
+    } else {
+      fetchCards();
     }
-    setUserPhone(authenticatedUser);
-
-    const savedCards = JSON.parse(localStorage.getItem('cards') || '[]');
-    setCards(savedCards);
   }, [navigate]);
 
-  const handleDeleteCard = (cardId) => {
-    if (window.confirm('Are you sure you want to delete this card?')) {
-      const updatedCards = cards.filter(card => card.id !== cardId);
-      localStorage.setItem('cards', JSON.stringify(updatedCards));
-      setCards(updatedCards);
+  const fetchCards = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await api.get('/cards');
+      setCards(response.data);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch cards');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleDeleteCard = async (cardId) => {
+    try {
+      setError('');
+      await api.delete(`/cards/${cardId}`);
+      setCards(cards.filter(card => card.id !== cardId));
+    } catch (err) {
+      setError(err.message || 'Failed to delete card');
+    }
+  };
+
+  const handleGetOffers = (card) => {
+    alert(`Getting offers for ${card.cardType} card ending in ${card.lastFourDigits}`);
   };
 
   const getCardBgColor = (cardType) => {
@@ -41,10 +59,13 @@ const MyCards = () => {
     }
   };
 
-  const handleGetOffers = (card) => {
-    // This will be implemented later with actual offers functionality
-    alert(`Getting offers for your ${card.cardType} card ending in ${card.cardNumber.slice(-4)}`);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading cards...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black py-12 px-4 sm:px-6 lg:px-8">
@@ -73,6 +94,12 @@ const MyCards = () => {
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-100">
+            {error}
+          </div>
+        )}
 
         <h2 className="text-3xl font-bold text-white mb-8">My Cards</h2>
 
@@ -111,12 +138,12 @@ const MyCards = () => {
                   </div>
                   <div className="space-y-4">
                     <p className="text-2xl font-mono tracking-wider">
-                      {card.cardNumber}
+                      •••• •••• •••• {card.lastFourDigits}
                     </p>
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-sm opacity-80">Card Holder</p>
-                        <p className="font-semibold">{card.cardName}</p>
+                        <p className="font-semibold">{card.cardHolderName}</p>
                       </div>
                       <div>
                         <p className="text-sm opacity-80">Expires</p>
