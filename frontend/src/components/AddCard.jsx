@@ -10,6 +10,7 @@ const AddCard = () => {
     expiryDate: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -19,25 +20,47 @@ const AddCard = () => {
     }
   }, [navigate]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
     
     if (cardData.cardNumber.length !== 16) {
       setError('Please enter a valid 16-digit card number');
+      setLoading(false);
       return;
     }
 
-    const newCard = {
-      id: Date.now(),
-      ...cardData,
-      cardNumber: cardData.cardNumber.replace(/(\d{4})/g, '$1 ').trim()
-    };
+    try {
+      const response = await fetch('/api/cards/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': localStorage.getItem('authenticatedUser')
+        },
+        body: JSON.stringify({
+          cardNumber: cardData.cardNumber,
+          cardType: cardData.cardType,
+          cardName: cardData.cardName,
+          expiryDate: cardData.expiryDate
+        })
+      });
 
-    const existingCards = JSON.parse(localStorage.getItem('cards') || '[]');
-    localStorage.setItem('cards', JSON.stringify([...existingCards, newCard]));
+      if (!response.ok) {
+        throw new Error('Failed to add card');
+      }
 
-    alert('Card added successfully!');
-    navigate('/my-cards');
+      const data = await response.json();
+      if (data.success) {
+        navigate('/my-cards');
+      } else {
+        throw new Error(data.error || 'Failed to add card');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCardNumberChange = (e) => {
@@ -109,9 +132,10 @@ const AddCard = () => {
           <div className="flex gap-4">
             <button
               type="submit"
-              className="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 ease-in-out"
+              disabled={loading}
+              className="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add Card
+              {loading ? 'Adding...' : 'Add Card'}
             </button>
             <button
               type="button"

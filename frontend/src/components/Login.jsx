@@ -25,16 +25,16 @@ const Login = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ mobile: formattedMobile }),
+                body: JSON.stringify({ phoneNumber: formattedMobile }),
             });
 
             const data = await response.json();
-            console.log("Response:", data); // Add this for debugging
+            console.log("Response:", data);
 
             if (response.ok && data.success) {
                 navigate("/otp", { state: { mobile: formattedMobile } });
             } else {
-                setError(data.details || data.error || 'Failed to send OTP');
+                setError(data.error || 'Failed to send OTP');
             }
         } catch (err) {
             console.error('Error:', err);
