@@ -13,9 +13,22 @@ const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 // Create Twilio client
 const client = twilio(accountSid, authToken);
 
+// List of verified phone numbers for trial account
+const verifiedNumbers = [
+  '+919572264601'  // Your verified number
+];
+
 class OTPService {
   static async sendOTP(phoneNumber) {
     try {
+      // Check if the number is verified for trial account
+      if (!verifiedNumbers.includes(phoneNumber)) {
+        return {
+          success: false,
+          message: 'This phone number is not verified. Please use a verified number for testing.'
+        };
+      }
+
       const verification = await client.verify.v2
         .services(verifyServiceSid)
         .verifications.create({ to: phoneNumber, channel: 'sms' });
@@ -36,6 +49,14 @@ class OTPService {
 
   static async verifyOTP(phoneNumber, code) {
     try {
+      // Check if the number is verified for trial account
+      if (!verifiedNumbers.includes(phoneNumber)) {
+        return {
+          success: false,
+          message: 'This phone number is not verified. Please use a verified number for testing.'
+        };
+      }
+
       const verificationCheck = await client.verify.v2
         .services(verifyServiceSid)
         .verificationChecks.create({ to: phoneNumber, code });
