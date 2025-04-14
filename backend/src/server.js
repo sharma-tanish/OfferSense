@@ -1,54 +1,40 @@
-require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./config/database');
+const otpRoutes = require('./routes/otp');
+const cardRoutes = require('./routes/cards');
+
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-const routes = require('./routes');
-const otpRouter = require('./otp_service');
+// Connect to MongoDB
+connectDB();
 
-// Update CORS configuration
+// Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['POST', 'GET'],
-  allowedHeaders: ['Content-Type'],
-  maxAge: 86400
+  origin: 'http://localhost:5173', // Your frontend URL
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'user-id']
 }));
 
-// Then other middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/', routes);
-app.use('/otp', otpRouter);
 
-// Add validation middleware
+// Routes
+app.use('/api/otp', otpRoutes);
+app.use('/api/cards', cardRoutes);
+
+// Error handling middleware
 app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    return res.status(400).json({ error: 'Invalid JSON payload' });
-  }
-  next();
-});
-
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
+  console.error(err.stack);
+  res.status(500).json({ 
+    success: false, 
+    error: 'Internal Server Error',
+    message: err.message 
   });
 });
 
-// Add this at the top
-process.env.DEBUG = 'twilio:*'; // Enable Twilio SDK debug logs
+const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-
-// Handle shutdown gracefully
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-  });
 });

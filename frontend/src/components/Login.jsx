@@ -12,7 +12,12 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        console.log("Mobile Number:", countryCode + mobile);
+        
+        // Ensure mobile number is clean and properly formatted
+        const cleanMobile = mobile.replace(/\D/g, ''); // Remove non-digits
+        const formattedMobile = `${countryCode}${cleanMobile}`; // Format with country code
+        
+        console.log("Sending OTP to:", formattedMobile);
         
         try {
             const response = await fetch('/api/otp/send-otp', {
@@ -20,23 +25,20 @@ const Login = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ mobile: countryCode + mobile }),
+                body: JSON.stringify({ phoneNumber: formattedMobile }),
             });
 
-            if (!response.ok) {
-                if (response.status === 429) {
-                    throw new Error('Too many attempts. Please try again later.');
-                }
-                throw new Error(`Server error: ${response.status}`);
-            }
+            const data = await response.json();
+            console.log("Response:", data);
 
-            navigate("/otp", { state: { mobile } });
-        } catch (err) {
-            if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
-                setError('Network error - please check your connection');
+            if (response.ok && data.success) {
+                navigate("/otp", { state: { mobile: formattedMobile } });
             } else {
-                setError(err.message);
+                setError(data.error || 'Failed to send OTP');
             }
+        } catch (err) {
+            console.error('Error:', err);
+            setError('Network error - please check your connection');
         }
     };
 
