@@ -1,150 +1,188 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaCreditCard, FaUser, FaCalendarAlt, FaLock } from 'react-icons/fa';
+import { detectCardNetwork, detectBank, validateCardNumber, formatCardNumber } from '../utils/cardUtils';
 
 const AddCard = () => {
   const navigate = useNavigate();
   const [cardData, setCardData] = useState({
     cardNumber: '',
-    cardType: 'VISA',
-    cardName: '',
-    expiryDate: ''
+    cardHolderName: '',
+    expiryDate: '',
+    cvv: ''
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [cardNetwork, setCardNetwork] = useState('');
+  const [bankName, setBankName] = useState('');
 
-  useEffect(() => {
-    // Check if user is authenticated
-    const authenticatedUser = localStorage.getItem('authenticatedUser');
-    if (!authenticatedUser) {
-      navigate('/login');
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let formattedValue = value;
+
+    if (name === 'cardNumber') {
+      formattedValue = formatCardNumber(value);
+      const network = detectCardNetwork(value);
+      const bank = detectBank(value);
+      setCardNetwork(network);
+      setBankName(bank);
+    } else if (name === 'expiryDate') {
+      // Format expiry date as MM/YY
+      formattedValue = value
+        .replace(/\D/g, '')
+        .replace(/^(\d{2})/, '$1/')
+        .substr(0, 5);
+    } else if (name === 'cvv') {
+      // Only allow 3-4 digits for CVV
+      formattedValue = value.replace(/\D/g, '').substr(0, 4);
     }
-  }, [navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    
-    if (cardData.cardNumber.length !== 16) {
-      setError('Please enter a valid 16-digit card number');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/cards/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'user-id': localStorage.getItem('authenticatedUser')
-        },
-        body: JSON.stringify({
-          cardNumber: cardData.cardNumber,
-          cardType: cardData.cardType,
-          cardName: cardData.cardName,
-          expiryDate: cardData.expiryDate
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add card');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        navigate('/my-cards');
-      } else {
-        throw new Error(data.error || 'Failed to add card');
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    setCardData(prev => ({
+      ...prev,
+      [name]: formattedValue
+    }));
   };
 
-  const handleCardNumberChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 16);
-    setCardData({ ...cardData, cardNumber: value });
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!cardData.cardNumber) {
+      newErrors.cardNumber = 'Card number is required';
+    } else if (!validateCardNumber(cardData.cardNumber)) {
+      newErrors.cardNumber = 'Invalid card number';
+    }
+    
+    if (!cardData.cardHolderName) {
+      newErrors.cardHolderName = 'Cardholder name is required';
+    }
+    
+    if (!cardData.expiryDate) {
+      newErrors.expiryDate = 'Expiry date is required';
+    } else {
+      const [month, year] = cardData.expiryDate.split('/');
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear() % 100;
+      const currentMonth = currentDate.getMonth() + 1;
+      
+      if (parseInt(month) < 1 || parseInt(month) > 12) {
+        newErrors.expiryDate = 'Invalid month';
+      } else if (parseInt(year) < currentYear || 
+                (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
+        newErrors.expiryDate = 'Card has expired';
+      }
+    }
+    
+    if (!cardData.cvv) {
+      newErrors.cvv = 'CVV is required';
+    } else if (cardData.cvv.length < 3) {
+      newErrors.cvv = 'CVV must be 3-4 digits';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (validateForm()) {
+      const newCard = {
+        id: Date.now(),
+        cardNumber: cardData.cardNumber,
+        cardHolderName: cardData.cardHolderName,
+        expiryDate: cardData.expiryDate,
+        cardType: cardNetwork,
+        bankName: bankName
+      };
+      
+      const existingCards = JSON.parse(localStorage.getItem('cards') || '[]');
+      localStorage.setItem('cards', JSON.stringify([...existingCards, newCard]));
+      navigate('/my-cards');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-8">
-        <h2 className="text-3xl font-bold mb-8 text-center text-white">Add New Card</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Card</h2>
         
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-100">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-200">Card Number</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative">
+            <FaCreditCard className="absolute left-3 top-3 text-gray-400" />
             <input
               type="text"
-              value={cardData.cardNumber.replace(/(\d{4})/g, '$1 ').trim()}
-              onChange={handleCardNumberChange}
-              placeholder="1234 5678 9012 3456"
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-              required
+              name="cardNumber"
+              value={cardData.cardNumber}
+              onChange={handleChange}
+              placeholder="Card Number"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={19}
             />
+            {errors.cardNumber && (
+              <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>
+            )}
+            {cardNetwork && (
+              <p className="text-sm text-gray-600 mt-1">
+                Card Network: {cardNetwork}
+                {bankName && ` | Bank: ${bankName}`}
+              </p>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-200">Card Type</label>
-            <select
-              value={cardData.cardType}
-              onChange={(e) => setCardData({...cardData, cardType: e.target.value})}
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-              required
-            >
-              <option value="VISA">VISA</option>
-              <option value="MASTERCARD">MasterCard</option>
-              <option value="RUPAY">RuPay</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-200">Card Holder Name</label>
+          <div className="relative">
+            <FaUser className="absolute left-3 top-3 text-gray-400" />
             <input
               type="text"
-              value={cardData.cardName}
-              onChange={(e) => setCardData({...cardData, cardName: e.target.value.toUpperCase()})}
-              placeholder="JOHN DOE"
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-              required
+              name="cardHolderName"
+              value={cardData.cardHolderName}
+              onChange={handleChange}
+              placeholder="Cardholder Name"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.cardHolderName && (
+              <p className="text-red-500 text-sm mt-1">{errors.cardHolderName}</p>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-200">Expiry Date</label>
-            <input
-              type="month"
-              value={cardData.expiryDate}
-              onChange={(e) => setCardData({...cardData, expiryDate: e.target.value})}
-              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <FaCalendarAlt className="absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                name="expiryDate"
+                value={cardData.expiryDate}
+                onChange={handleChange}
+                placeholder="MM/YY"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={5}
+              />
+              {errors.expiryDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>
+              )}
+            </div>
+
+            <div className="relative">
+              <FaLock className="absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                name="cvv"
+                value={cardData.cvv}
+                onChange={handleChange}
+                placeholder="CVV"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={4}
+              />
+              {errors.cvv && (
+                <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Adding...' : 'Add Card'}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/my-cards')}
-              className="flex-1 flex justify-center py-3 px-4 border border-gray-600 rounded-lg text-sm font-medium text-white hover:bg-gray-700 transition-all duration-300 ease-in-out"
-            >
-              Cancel
-            </button>
-          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300"
+          >
+            Add Card
+          </button>
         </form>
       </div>
     </div>
