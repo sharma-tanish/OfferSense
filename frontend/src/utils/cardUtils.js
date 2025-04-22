@@ -1,10 +1,10 @@
 // Card network patterns
 const CARD_PATTERNS = {
-  VISA: /^4[0-9]{12}(?:[0-9]{3})?$/,
-  MASTERCARD: /^5[1-5][0-9]{14}$/,
-  RUPAY: /^6[0-9]{15}$/,
-  AMEX: /^3[47][0-9]{13}$/,
-  DISCOVER: /^6(?:011|5[0-9]{2})[0-9]{12}$/
+  VISA: /^4[0-9]{0,15}$/,
+  MASTERCARD: /^5[1-5][0-9]{0,14}$/,
+  RUPAY: /^6[0-9]{0,15}$/,
+  AMEX: /^3[47][0-9]{0,13}$/,
+  DISCOVER: /^6(?:011|5[0-9]{2})[0-9]{0,12}$/
 };
 
 // BIN (Bank Identification Number) ranges for major Indian banks

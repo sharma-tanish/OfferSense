@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCreditCard, FaUser, FaCalendarAlt, FaLock } from 'react-icons/fa';
-import { detectCardNetwork, detectBank, validateCardNumber, formatCardNumber } from '../utils/cardUtils';
+import { FaCreditCard, FaUser, FaCalendarAlt, FaLock, FaBuilding } from 'react-icons/fa';
+import { detectCardNetwork, validateCardNumber, formatCardNumber } from '../utils/cardUtils';
+import { addCard } from '../services/cardService';
+
+const BANKS = [
+  { name: 'State Bank of India', code: 'SBI' },
+  { name: 'HDFC Bank', code: 'HDFC' },
+  { name: 'ICICI Bank', code: 'ICICI' },
+  { name: 'Axis Bank', code: 'AXIS' },
+  { name: 'Punjab National Bank', code: 'PNB' },
+  { name: 'Bank of Baroda', code: 'BOB' },
+  { name: 'Citibank', code: 'CITI' },
+  { name: 'Kotak Mahindra Bank', code: 'KOTAK' },
+  { name: 'Yes Bank', code: 'YES' },
+  { name: 'IDFC First Bank', code: 'IDFC' },
+  { name: 'Other Bank', code: 'OTHER' }
+];
 
 const AddCard = () => {
   const navigate = useNavigate();
@@ -9,11 +24,13 @@ const AddCard = () => {
     cardNumber: '',
     cardHolderName: '',
     expiryDate: '',
-    cvv: ''
+    cvv: '',
+    bankName: ''
   });
   const [errors, setErrors] = useState({});
   const [cardNetwork, setCardNetwork] = useState('');
-  const [bankName, setBankName] = useState('');
+  const [showNetwork, setShowNetwork] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,18 +38,20 @@ const AddCard = () => {
 
     if (name === 'cardNumber') {
       formattedValue = formatCardNumber(value);
-      const network = detectCardNetwork(value);
-      const bank = detectBank(value);
-      setCardNetwork(network);
-      setBankName(bank);
+      // Detect network after 6 digits
+      if (value.replace(/\s/g, '').length >= 6) {
+        const network = detectCardNetwork(value);
+        setCardNetwork(network);
+        setShowNetwork(true);
+      } else {
+        setShowNetwork(false);
+      }
     } else if (name === 'expiryDate') {
-      // Format expiry date as MM/YY
       formattedValue = value
         .replace(/\D/g, '')
         .replace(/^(\d{2})/, '$1/')
         .substr(0, 5);
     } else if (name === 'cvv') {
-      // Only allow 3-4 digits for CVV
       formattedValue = value.replace(/\D/g, '').substr(0, 4);
     }
 
@@ -53,6 +72,12 @@ const AddCard = () => {
     
     if (!cardData.cardHolderName) {
       newErrors.cardHolderName = 'Cardholder name is required';
+    } else if (cardData.cardHolderName.length < 3) {
+      newErrors.cardHolderName = 'Name must be at least 3 characters';
+    }
+    
+    if (!cardData.bankName) {
+      newErrors.bankName = 'Bank name is required';
     }
     
     if (!cardData.expiryDate) {
@@ -81,31 +106,42 @@ const AddCard = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
-      const newCard = {
-        id: Date.now(),
-        cardNumber: cardData.cardNumber,
-        cardHolderName: cardData.cardHolderName,
-        expiryDate: cardData.expiryDate,
-        cardType: cardNetwork,
-        bankName: bankName
-      };
-      
-      const existingCards = JSON.parse(localStorage.getItem('cards') || '[]');
-      localStorage.setItem('cards', JSON.stringify([...existingCards, newCard]));
-      navigate('/my-cards');
+      setIsSubmitting(true);
+      try {
+        const newCard = {
+          cardNumber: cardData.cardNumber,
+          cardHolderName: cardData.cardHolderName,
+          expiryDate: cardData.expiryDate,
+          cardType: cardNetwork,
+          bankName: cardData.bankName
+        };
+        
+        await addCard(newCard);
+        navigate('/my-cards');
+      } catch (error) {
+        setErrors({ submit: error.message });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Card</h2>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md mx-auto bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-8">
+        <h2 className="text-3xl font-bold mb-8 text-center text-white">Add New Card</h2>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {errors.submit && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg">
+            {errors.submit}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="relative">
             <FaCreditCard className="absolute left-3 top-3 text-gray-400" />
             <input
@@ -114,17 +150,34 @@ const AddCard = () => {
               value={cardData.cardNumber}
               onChange={handleChange}
               placeholder="Card Number"
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
               maxLength={19}
             />
             {errors.cardNumber && (
-              <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>
+              <p className="text-red-400 text-sm mt-1">{errors.cardNumber}</p>
             )}
-            {cardNetwork && (
-              <p className="text-sm text-gray-600 mt-1">
+            {showNetwork && cardNetwork && (
+              <p className="text-sm text-gray-400 mt-1">
                 Card Network: {cardNetwork}
-                {bankName && ` | Bank: ${bankName}`}
               </p>
+            )}
+          </div>
+
+          <div className="relative">
+            <FaBuilding className="absolute left-3 top-3 text-gray-400" />
+            <select
+              name="bankName"
+              value={cardData.bankName}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
+            >
+              <option value="">Select Bank</option>
+              {BANKS.map(bank => (
+                <option key={bank.code} value={bank.code}>{bank.name}</option>
+              ))}
+            </select>
+            {errors.bankName && (
+              <p className="text-red-400 text-sm mt-1">{errors.bankName}</p>
             )}
           </div>
 
@@ -136,10 +189,10 @@ const AddCard = () => {
               value={cardData.cardHolderName}
               onChange={handleChange}
               placeholder="Cardholder Name"
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
             />
             {errors.cardHolderName && (
-              <p className="text-red-500 text-sm mt-1">{errors.cardHolderName}</p>
+              <p className="text-red-400 text-sm mt-1">{errors.cardHolderName}</p>
             )}
           </div>
 
@@ -152,11 +205,11 @@ const AddCard = () => {
                 value={cardData.expiryDate}
                 onChange={handleChange}
                 placeholder="MM/YY"
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
                 maxLength={5}
               />
               {errors.expiryDate && (
-                <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>
+                <p className="text-red-400 text-sm mt-1">{errors.expiryDate}</p>
               )}
             </div>
 
@@ -168,21 +221,31 @@ const AddCard = () => {
                 value={cardData.cvv}
                 onChange={handleChange}
                 placeholder="CVV"
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
                 maxLength={4}
               />
               {errors.cvv && (
-                <p className="text-red-500 text-sm mt-1">{errors.cvv}</p>
+                <p className="text-red-400 text-sm mt-1">{errors.cvv}</p>
               )}
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300"
-          >
-            Add Card
-          </button>
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Adding Card...' : 'Add Card'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/my-cards')}
+              className="flex-1 bg-gray-700 text-white py-3 px-4 rounded-lg hover:bg-gray-600 transition duration-300"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>
