@@ -10,7 +10,7 @@ const verifyUser = (req, res, next) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: 'User ID is required'
+      error: 'Unauthorized'
     });
   }
 

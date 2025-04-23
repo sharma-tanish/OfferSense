@@ -10,8 +10,16 @@ class CardService {
   // Add a new card
   static async addCard(userId, cardData) {
     try {
+      console.log('Received card data:', cardData);
+      
       // Validate required fields
       if (!cardData.cardNumber || !cardData.cardType || !cardData.cardName || !cardData.expiryDate) {
+        console.log('Missing fields:', {
+          cardNumber: !!cardData.cardNumber,
+          cardType: !!cardData.cardType,
+          cardName: !!cardData.cardName,
+          expiryDate: !!cardData.expiryDate
+        });
         return {
           success: false,
           error: 'Missing required fields',
@@ -19,7 +27,7 @@ class CardService {
         };
       }
 
-      // Validate card number format
+      // Clean and validate card number
       const cardNumber = cardData.cardNumber.replace(/\s/g, '');
       if (!/^\d{16}$/.test(cardNumber)) {
         return {
@@ -41,13 +49,29 @@ class CardService {
       const token = this.generateToken(cardNumber);
       const lastFourDigits = cardNumber.slice(-4);
 
+      // Check if card already exists for this user
+      const existingCard = await Card.findOne({ 
+        userId, 
+        lastFourDigits,
+        expiryDate: cardData.expiryDate
+      });
+
+      if (existingCard) {
+        return {
+          success: false,
+          error: 'This card is already added to your account',
+          status: 409
+        };
+      }
+
       const newCard = new Card({
         userId,
         cardType: cardData.cardType,
         lastFourDigits,
         cardHolderName: cardData.cardName,
         expiryDate: cardData.expiryDate,
-        token
+        token,
+        bankName: cardData.bankName
       });
 
       await newCard.save();
@@ -58,7 +82,8 @@ class CardService {
           cardType: newCard.cardType,
           lastFourDigits: newCard.lastFourDigits,
           cardHolderName: newCard.cardHolderName,
-          expiryDate: newCard.expiryDate
+          expiryDate: newCard.expiryDate,
+          bankName: newCard.bankName
         }
       };
     } catch (error) {
@@ -66,7 +91,7 @@ class CardService {
       if (error.code === 11000) {
         return {
           success: false,
-          error: 'Card already exists',
+          error: 'This card is already added to your account',
           status: 409
         };
       }

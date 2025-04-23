@@ -23,6 +23,10 @@ const cardSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  bankName: {
+    type: String,
+    required: true
+  },
   token: {
     type: String,
     required: true,

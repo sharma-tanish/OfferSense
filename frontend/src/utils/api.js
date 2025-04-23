@@ -22,11 +22,13 @@ const getHeaders = () => {
 };
 
 const handleResponse = async (response) => {
+  const data = await response.json();
+  
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Something went wrong');
+    throw new Error(data.error || data.message || 'Something went wrong');
   }
-  return response.json();
+  
+  return data;
 };
 
 const api = {

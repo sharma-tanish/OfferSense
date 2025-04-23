@@ -55,15 +55,14 @@ class OTPService {
     try {
       const formattedNumber = this.formatPhoneNumber(phoneNumber);
       console.log('Attempting to send OTP to:', formattedNumber);
-      console.log('Current environment:', process.env.NODE_ENV || 'development');
 
-      if (process.env.NODE_ENV === 'production' && client) {
+      if (process.env.NODE_ENV === 'production') {
         // Production: Use Twilio
         const verification = await client.verify.v2
           .services(verifyServiceSid)
           .verifications.create({ to: formattedNumber, channel: 'sms' });
 
-        console.log('OTP sent successfully via Twilio:', verification.sid);
+        console.log('OTP sent successfully:', verification.sid);
         return {
           success: true,
           message: 'OTP sent successfully',
@@ -100,15 +99,14 @@ class OTPService {
     try {
       const formattedNumber = this.formatPhoneNumber(phoneNumber);
       console.log('Attempting to verify OTP for:', formattedNumber);
-      console.log('Current environment:', process.env.NODE_ENV || 'development');
 
-      if (process.env.NODE_ENV === 'production' && client) {
+      if (process.env.NODE_ENV === 'production') {
         // Production: Use Twilio
         const verificationCheck = await client.verify.v2
           .services(verifyServiceSid)
           .verificationChecks.create({ to: formattedNumber, code });
 
-        console.log('Verification result via Twilio:', verificationCheck.status);
+        console.log('Verification result:', verificationCheck.status);
         return {
           success: verificationCheck.status === 'approved',
           message: verificationCheck.status === 'approved' ? 'OTP verified successfully' : 'Invalid OTP'

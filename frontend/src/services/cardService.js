@@ -4,12 +4,14 @@ export const addCard = async (cardData) => {
   try {
     // Transform the data to match backend expectations
     const transformedData = {
-      cardNumber: cardData.cardNumber,
+      cardNumber: cardData.cardNumber.replace(/\s/g, ''), // Remove spaces from card number
       cardType: cardData.cardType,
       cardName: cardData.cardHolderName,
-      expiryDate: cardData.expiryDate
+      expiryDate: cardData.expiryDate,
+      bankName: cardData.bankName
     };
 
+    console.log('Sending card data:', transformedData);
     const response = await api.post('/cards/add', transformedData);
     return response;
   } catch (error) {
