@@ -51,9 +51,11 @@ const OTP = () => {
             console.log('Verification response:', data);
 
             if (response.ok && data.success) {
-                // Store verification status and phone number
+                // Store authentication data
                 localStorage.setItem('isVerified', 'true');
                 localStorage.setItem('phoneNumber', mobile);
+                localStorage.setItem('token', data.token); // Store the token
+                localStorage.setItem('userId', data.userId); // Store the user ID
                 
                 // Navigate to my-cards page and replace history
                 navigate("/my-cards", { replace: true });
@@ -85,37 +87,41 @@ const OTP = () => {
     }
 
     return (
-        <div className="bg-black min-h-screen flex items-center justify-center">
-            <div className="flex flex-col space-y-4 w-[400px] mx-auto border border-white rounded-2xl p-10">
-                <p className="text-[32px] font-bold text-white">Enter OTP</p>
-                <p className="text-gray-400">
-                    Enter the verification code sent to {mobile}
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center px-4">
+            <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-xl shadow-2xl p-8">
+                <h2 className="text-2xl font-bold text-white mb-6">Enter OTP</h2>
+                <p className="text-gray-400 mb-6">
+                    We have sent an OTP to {mobile}
                 </p>
+                
                 {error && (
-                    <div className="text-red-500 text-sm text-center bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    <div className="mb-4 p-3 bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg">
                         {error}
                     </div>
                 )}
-                <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
-                    <div className="flex justify-center space-x-2">
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="flex justify-between">
                         {otp.map((data, index) => (
                             <input
                                 key={index}
                                 type="text"
+                                name="otp"
                                 maxLength="1"
                                 value={data}
-                                onChange={(e) => handleChange(e.target, index)}
-                                onKeyDown={(e) => handleKeyDown(e, index)}
-                                onFocus={(e) => e.target.select()}
-                                className="w-12 h-12 text-center text-white bg-zinc-950 border border-zinc-800 rounded-lg focus:outline-none focus:border-blue-500 text-xl"
-                                disabled={loading}
+                                onChange={e => handleChange(e.target, index)}
+                                onKeyDown={e => handleKeyDown(e, index)}
+                                className="w-12 h-12 text-center text-2xl bg-white/10 border border-white/20 rounded focus:outline-none focus:border-indigo-500 text-white"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                             />
                         ))}
                     </div>
+
                     <button
                         type="submit"
                         disabled={loading}
-                        className="bg-white text-zinc-950 hover:bg-white/90 active:bg-white/80 flex w-full mt-6 items-center justify-center rounded-lg px-4 py-4 text-base font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center disabled:opacity-50"
                     >
                         {loading ? (
                             <div className="flex items-center">

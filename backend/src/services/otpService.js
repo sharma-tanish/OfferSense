@@ -1,5 +1,7 @@
-const twilio = require('twilio');
-require('dotenv').config();
+import twilio from 'twilio';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Disable SSL verification in development mode
 if (process.env.NODE_ENV !== 'production') {
@@ -10,13 +12,16 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-// Create Twilio client
-const client = twilio(accountSid, authToken);
+// Initialize Twilio client only if we're in production
+const client = process.env.NODE_ENV === 'production' ? twilio(accountSid, authToken) : null;
 
 // List of verified phone numbers for trial account
 const verifiedNumbers = [
   '+919631924059'  // Your verified number
 ];
+
+// Mock OTP storage for development
+const mockOTPs = new Map();
 
 class OTPService {
   static formatPhoneNumber(phoneNumber) {
@@ -50,30 +55,32 @@ class OTPService {
     try {
       const formattedNumber = this.formatPhoneNumber(phoneNumber);
       console.log('Attempting to send OTP to:', formattedNumber);
-      console.log('Using Twilio credentials:', {
-        accountSid: accountSid ? 'Present' : 'Missing',
-        verifyServiceSid: verifyServiceSid ? 'Present' : 'Missing'
-      });
+      console.log('Current environment:', process.env.NODE_ENV || 'development');
 
-      // Check if the number is verified for trial account
-      if (!verifiedNumbers.includes(formattedNumber)) {
-        console.log('Phone number not verified:', formattedNumber);
+      if (process.env.NODE_ENV === 'production' && client) {
+        // Production: Use Twilio
+        const verification = await client.verify.v2
+          .services(verifyServiceSid)
+          .verifications.create({ to: formattedNumber, channel: 'sms' });
+
+        console.log('OTP sent successfully via Twilio:', verification.sid);
         return {
-          success: false,
-          message: 'This phone number is not verified. Please use a verified number for testing.'
+          success: true,
+          message: 'OTP sent successfully',
+          verificationSid: verification.sid
+        };
+      } else {
+        // Development: Use mock OTP
+        const mockOTP = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+        mockOTPs.set(formattedNumber, mockOTP);
+        
+        console.log('Mock OTP sent:', mockOTP);
+        return {
+          success: true,
+          message: 'OTP sent successfully',
+          verificationSid: 'mock_verification_sid'
         };
       }
-
-      const verification = await client.verify.v2
-        .services(verifyServiceSid)
-        .verifications.create({ to: formattedNumber, channel: 'sms' });
-
-      console.log('OTP sent successfully:', verification.sid);
-      return {
-        success: true,
-        message: 'OTP sent successfully',
-        verificationSid: verification.sid
-      };
     } catch (error) {
       console.error('Error sending OTP:', error);
       console.error('Error details:', {
@@ -93,25 +100,34 @@ class OTPService {
     try {
       const formattedNumber = this.formatPhoneNumber(phoneNumber);
       console.log('Attempting to verify OTP for:', formattedNumber);
+      console.log('Current environment:', process.env.NODE_ENV || 'development');
 
-      // Check if the number is verified for trial account
-      if (!verifiedNumbers.includes(formattedNumber)) {
-        console.log('Phone number not verified:', formattedNumber);
+      if (process.env.NODE_ENV === 'production' && client) {
+        // Production: Use Twilio
+        const verificationCheck = await client.verify.v2
+          .services(verifyServiceSid)
+          .verificationChecks.create({ to: formattedNumber, code });
+
+        console.log('Verification result via Twilio:', verificationCheck.status);
         return {
-          success: false,
-          message: 'This phone number is not verified. Please use a verified number for testing.'
+          success: verificationCheck.status === 'approved',
+          message: verificationCheck.status === 'approved' ? 'OTP verified successfully' : 'Invalid OTP'
+        };
+      } else {
+        // Development: Use mock verification
+        const storedOTP = mockOTPs.get(formattedNumber);
+        const isValid = storedOTP === code;
+        
+        if (isValid) {
+          mockOTPs.delete(formattedNumber); // Clear the OTP after successful verification
+        }
+        
+        console.log('Mock verification result:', isValid ? 'approved' : 'rejected');
+        return {
+          success: isValid,
+          message: isValid ? 'OTP verified successfully' : 'Invalid OTP'
         };
       }
-
-      const verificationCheck = await client.verify.v2
-        .services(verifyServiceSid)
-        .verificationChecks.create({ to: formattedNumber, code });
-
-      console.log('Verification result:', verificationCheck.status);
-      return {
-        success: verificationCheck.status === 'approved',
-        message: verificationCheck.status === 'approved' ? 'OTP verified successfully' : 'Invalid OTP'
-      };
     } catch (error) {
       console.error('Error verifying OTP:', error);
       console.error('Error details:', {
@@ -128,4 +144,4 @@ class OTPService {
   }
 }
 
-module.exports = OTPService; 
+export default OTPService; 

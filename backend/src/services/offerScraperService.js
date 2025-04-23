@@ -1,6 +1,6 @@
 import axios from 'axios';
-import cheerio from 'cheerio';
-import { Configuration, OpenAIApi } from 'openai';
+import * as cheerio from 'cheerio';
+import OpenAI from 'openai';
 import { config } from '../config.js';
 
 const OFFER_CATEGORIES = {
@@ -48,10 +48,9 @@ const OFFER_CATEGORIES = {
 
 class OfferScraperService {
   constructor() {
-    this.configuration = new Configuration({
+    this.openai = new OpenAI({
       apiKey: config.openai.apiKey,
     });
-    this.openai = new OpenAIApi(this.configuration);
   }
 
   async getOffersForCard(cardDetails) {
@@ -103,14 +102,18 @@ class OfferScraperService {
     Format the response as a JSON array of strings.`;
 
     try {
-      const response = await this.openai.createCompletion({
-        model: "text-davinci-003",
-        prompt,
-        max_tokens: 150,
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
         temperature: 0.7,
       });
 
-      return JSON.parse(response.data.choices[0].text.trim());
+      return JSON.parse(response.choices[0].message.content.trim());
     } catch (error) {
       console.error('Error generating search queries:', error);
       return [];
@@ -176,14 +179,18 @@ class OfferScraperService {
     Format the response as a JSON array of valid offers.`;
 
     try {
-      const response = await this.openai.createCompletion({
-        model: "text-davinci-003",
-        prompt,
-        max_tokens: 1000,
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
         temperature: 0.3,
       });
 
-      return JSON.parse(response.data.choices[0].text.trim());
+      return JSON.parse(response.choices[0].message.content.trim());
     } catch (error) {
       console.error('Error validating offers:', error);
       return offers; // Return original offers if validation fails

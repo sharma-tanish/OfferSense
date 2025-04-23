@@ -1,8 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/database');
-const otpRoutes = require('./routes/otp');
-const cardRoutes = require('./routes/cards');
+import express from 'express';
+import cors from 'cors';
+import connectDB from './config/database.js';
+import otpRoutes from './routes/otp.js';
+import cardRoutes from './routes/cards.js';
+import offerRoutes from './routes/offers.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(express.json());
 // Routes
 app.use('/api/otp', otpRoutes);
 app.use('/api/cards', cardRoutes);
+app.use('/api/offers', offerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

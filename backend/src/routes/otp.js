@@ -1,6 +1,7 @@
-const express = require('express');
+import express from 'express';
+import OTPService from '../services/otpService.js';
+
 const router = express.Router();
-const OTPService = require('../services/otpService');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -66,9 +67,13 @@ router.post('/verify-otp', async (req, res) => {
     console.log('Verification result:', result);
     
     if (result.success) {
+      // Generate a user ID
+      const userId = `user_${Date.now()}`;
+
       res.json({
         success: true,
         message: result.message,
+        userId,
         redirectTo: '/my-cards'
       });
     } else {
@@ -87,4 +92,4 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 

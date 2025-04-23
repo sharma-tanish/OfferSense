@@ -8,7 +8,10 @@ const router = express.Router();
 const verifyUser = (req, res, next) => {
   const userId = req.headers['user-id'];
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ 
+      success: false,
+      error: 'User ID is required'
+    });
   }
   req.userId = userId;
   next();
@@ -21,7 +24,10 @@ router.post('/batch', verifyUser, async (req, res) => {
     const cards = await Card.find({ userId: req.userId });
     
     if (!cards.length) {
-      return res.status(404).json({ message: 'No cards found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'No cards found'
+      });
     }
 
     // Get offers for each card
@@ -39,15 +45,21 @@ router.post('/batch', verifyUser, async (req, res) => {
       })));
     }
 
-    res.json({ offers: allOffers });
+    res.json({ 
+      success: true,
+      data: { offers: allOffers }
+    });
   } catch (error) {
     console.error('Error fetching offers:', error);
-    res.status(500).json({ message: 'Failed to fetch offers' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch offers'
+    });
   }
 });
 
 // Get offers for a specific card
-router.post('/card/:cardId', verifyUser, async (req, res) => {
+router.get('/card/:cardId', verifyUser, async (req, res) => {
   try {
     const card = await Card.findOne({ 
       _id: req.params.cardId,
@@ -55,7 +67,10 @@ router.post('/card/:cardId', verifyUser, async (req, res) => {
     });
 
     if (!card) {
-      return res.status(404).json({ message: 'Card not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Card not found'
+      });
     }
 
     const offers = await offerScraperService.getOffersForCard({
@@ -64,10 +79,16 @@ router.post('/card/:cardId', verifyUser, async (req, res) => {
       lastFourDigits: card.lastFourDigits
     });
 
-    res.json({ offers });
+    res.json({ 
+      success: true,
+      data: { offers }
+    });
   } catch (error) {
     console.error('Error fetching offers:', error);
-    res.status(500).json({ message: 'Failed to fetch offers' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch offers'
+    });
   }
 });
 

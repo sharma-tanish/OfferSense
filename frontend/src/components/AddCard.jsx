@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCreditCard, FaUser, FaCalendarAlt, FaLock, FaBuilding } from 'react-icons/fa';
 import { detectCardNetwork, validateCardNumber, formatCardNumber } from '../utils/cardUtils';
@@ -31,6 +31,19 @@ const AddCard = () => {
   const [cardNetwork, setCardNetwork] = useState('');
   const [showNetwork, setShowNetwork] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    
+    if (!token || !userId) {
+      navigate('/login');
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -109,6 +122,12 @@ const AddCard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!isAuthenticated) {
+      setErrors({ submit: 'Please login to add a card' });
+      navigate('/login');
+      return;
+    }
+    
     if (validateForm()) {
       setIsSubmitting(true);
       try {
@@ -123,12 +142,24 @@ const AddCard = () => {
         await addCard(newCard);
         navigate('/my-cards');
       } catch (error) {
-        setErrors({ submit: error.message });
+        console.error('Add card error:', error);
+        if (error.message.includes('Unauthorized')) {
+          setErrors({ submit: 'Session expired. Please login again.' });
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          navigate('/login');
+        } else {
+          setErrors({ submit: error.message || 'Failed to add card' });
+        }
       } finally {
         setIsSubmitting(false);
       }
     }
   };
+
+  if (!isAuthenticated) {
+    return null; // or a loading spinner
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black py-12 px-4 sm:px-6 lg:px-8">

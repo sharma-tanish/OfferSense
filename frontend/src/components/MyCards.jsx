@@ -198,6 +198,10 @@ const MyCards = () => {
       return null;
     }
 
+    if (!offers || !Array.isArray(offers) || offers.length === 0) {
+      return null;
+    }
+
     return (
       <div key={category} className="mb-8">
         <div className="flex items-center gap-2 mb-4">
@@ -305,17 +309,17 @@ const MyCards = () => {
                   </div>
                   <div className="mb-4">
                     <p className="text-2xl font-bold text-white">
-                      •••• •••• •••• {card.cardNumber.slice(-4)}
+                      •••• •••• •••• {card.lastFourDigits || '0000'}
                     </p>
                   </div>
                   <div className="flex justify-between text-sm text-gray-400">
                     <div>
                       <p>Card Holder</p>
-                      <p className="font-medium text-white">{card.cardHolderName}</p>
+                      <p className="font-medium text-white">{card.cardHolderName || 'N/A'}</p>
                     </div>
                     <div>
                       <p>Expires</p>
-                      <p className="font-medium text-white">{card.expiryDate}</p>
+                      <p className="font-medium text-white">{card.expiryDate || 'N/A'}</p>
                     </div>
                   </div>
                 </div>

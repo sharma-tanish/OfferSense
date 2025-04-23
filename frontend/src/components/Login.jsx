@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
+import api from "../utils/api";
 
 const Login = () => {
     const [mobile, setMobile] = useState("");
@@ -20,25 +21,17 @@ const Login = () => {
         console.log("Sending OTP to:", formattedMobile);
         
         try {
-            const response = await fetch('/api/otp/send-otp', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ phoneNumber: formattedMobile }),
-            });
-
-            const data = await response.json();
+            const data = await api.post('/otp/send-otp', { phoneNumber: formattedMobile }, false);
             console.log("Response:", data);
 
-            if (response.ok && data.success) {
+            if (data.success) {
                 navigate("/otp", { state: { mobile: formattedMobile } });
             } else {
-                setError(data.error || 'Failed to send OTP');
+                setError(data.message || 'Failed to send OTP');
             }
         } catch (err) {
             console.error('Error:', err);
-            setError('Network error - please check your connection');
+            setError(err.message || 'Network error - please check your connection');
         }
     };
 
