@@ -17,23 +17,75 @@ const MyCards = () => {
 
   const fetchCards = async () => {
     try {
-      const savedCards = JSON.parse(localStorage.getItem('cards') || '[]');
-      setCards(savedCards);
+      const userId = localStorage.getItem('phoneNumber');
+      if (!userId) {
+        setError('User not authenticated. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/cards', {
+        headers: {
+          'user-id': userId
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch cards');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch cards');
+      }
+
+      // Transform the cards data to match the frontend structure
+      const transformedCards = data.cards.map(card => ({
+        id: card.id,
+        cardNumber: `•••• •••• •••• ${card.lastFourDigits}`,
+        cardHolderName: card.cardHolderName,
+        expiryDate: card.expiryDate,
+        cardType: card.cardType,
+        bankName: card.bankName || 'Unknown Bank'
+      }));
+
+      setCards(transformedCards);
     } catch (err) {
       setError('Failed to load cards');
+      console.error('Error fetching cards:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteCard = (cardId) => {
-    const updatedCards = cards.filter(card => card.id !== cardId);
-    localStorage.setItem('cards', JSON.stringify(updatedCards));
-    setCards(updatedCards);
-    // Remove offers for deleted card
-    const updatedOffers = { ...cardOffers };
-    delete updatedOffers[cardId];
-    setCardOffers(updatedOffers);
+  const handleDeleteCard = async (cardId) => {
+    try {
+      const userId = localStorage.getItem('phoneNumber');
+      if (!userId) {
+        setError('User not authenticated. Please login again.');
+        return;
+      }
+
+      const response = await fetch(`/api/cards/${cardId}`, {
+        method: 'DELETE',
+        headers: {
+          'user-id': userId
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete card');
+      }
+
+      // Remove the card from the local state
+      setCards(prevCards => prevCards.filter(card => card.id !== cardId));
+      // Remove offers for deleted card
+      const updatedOffers = { ...cardOffers };
+      delete updatedOffers[cardId];
+      setCardOffers(updatedOffers);
+    } catch (err) {
+      setError('Failed to delete card');
+    }
   };
 
   const handleGetOffers = async () => {
@@ -63,19 +115,19 @@ const MyCards = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen bg-gray-900 p-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center">Loading...</div>
+          <div className="text-center text-white">Loading...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gray-900 p-4">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">My Cards & Offers</h2>
+          <h2 className="text-2xl font-bold text-white">My Cards & Offers</h2>
           <div className="flex gap-4">
             <button
               onClick={handleGetOffers}
@@ -95,53 +147,53 @@ const MyCards = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          <div className="mb-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded-lg">
             {error}
           </div>
         )}
 
         {cards.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-600">No cards added yet</p>
+            <p className="text-gray-400">No cards added yet</p>
           </div>
         ) : (
           <div className="space-y-8">
             {cards.map(card => (
-              <div key={card.id} className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div key={card.id} className="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
                 {/* Card Details Section */}
-                <div className="p-6 border-b">
+                <div className="p-6 border-b border-gray-700">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{card.cardType}</h3>
-                      <p className="text-sm text-gray-600">{card.bankName}</p>
+                      <h3 className="text-lg font-semibold text-white">{card.cardType}</h3>
+                      <p className="text-sm text-gray-400">{card.bankName}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteCard(card.id)}
-                      className="text-red-500 hover:text-red-700 transition duration-300"
+                      className="text-red-500 hover:text-red-400 transition duration-300"
                     >
                       <FaTrash />
                     </button>
                   </div>
                   <div className="mb-4">
-                    <p className="text-2xl font-bold text-gray-800">
+                    <p className="text-2xl font-bold text-white">
                       •••• •••• •••• {card.cardNumber.slice(-4)}
                     </p>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-600">
+                  <div className="flex justify-between text-sm text-gray-400">
                     <div>
                       <p>Card Holder</p>
-                      <p className="font-medium text-gray-800">{card.cardHolderName}</p>
+                      <p className="font-medium text-white">{card.cardHolderName}</p>
                     </div>
                     <div>
                       <p>Expires</p>
-                      <p className="font-medium text-gray-800">{card.expiryDate}</p>
+                      <p className="font-medium text-white">{card.expiryDate}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Offers Section */}
                 <div className="p-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <FaGift className="text-yellow-500" />
                     Available Offers
                   </h4>
@@ -149,25 +201,14 @@ const MyCards = () => {
                   {cardOffers[card.id]?.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {cardOffers[card.id].map((offer, index) => (
-                        <div key={index} className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100 hover:shadow-md transition duration-300">
-                          <div className="flex items-start justify-between mb-2">
-                            <h5 className="font-semibold text-gray-800">{offer.title}</h5>
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                              <FaTag className="text-xs" />
+                        <div key={index} className="bg-gray-700 rounded-lg p-4 border border-gray-600 hover:shadow-md transition duration-300">
+                          <h5 className="text-white font-medium mb-2">{offer.title}</h5>
+                          <p className="text-gray-300 text-sm">{offer.description}</p>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-yellow-500 text-sm font-medium">
                               {offer.discount}% OFF
                             </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-3">{offer.description}</p>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <FaCalendarAlt />
-                              <span>Valid until: {new Date(offer.validUntil).toLocaleDateString()}</span>
-                            </div>
-                            <button
-                              onClick={() => window.open(offer.link, '_blank')}
-                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                            >
-                              <FaShoppingBag className="text-xs" />
+                            <button className="text-blue-400 hover:text-blue-300 text-sm">
                               View Details
                             </button>
                           </div>
@@ -175,11 +216,7 @@ const MyCards = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6 bg-gray-50 rounded-lg">
-                      <p className="text-gray-500">
-                        {isGettingOffers ? 'Loading offers...' : 'No offers available for this card'}
-                      </p>
-                    </div>
+                    <p className="text-gray-400">No offers available for this card</p>
                   )}
                 </div>
               </div>

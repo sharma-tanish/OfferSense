@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCreditCard, FaUser, FaCalendarAlt, FaLock } from 'react-icons/fa';
-import { detectCardNetwork, detectBank, validateCardNumber, formatCardNumber } from '../utils/cardUtils';
+import { FaCreditCard, FaUser, FaCalendarAlt, FaLock, FaBuilding } from 'react-icons/fa';
 
 const AddCard = () => {
   const navigate = useNavigate();
@@ -9,30 +8,44 @@ const AddCard = () => {
     cardNumber: '',
     cardHolderName: '',
     expiryDate: '',
-    cvv: ''
+    cvv: '',
+    bankName: ''
   });
   const [errors, setErrors] = useState({});
   const [cardNetwork, setCardNetwork] = useState('');
-  const [bankName, setBankName] = useState('');
+
+  const banks = [
+    'SBI', 'HDFC', 'ICICI', 'AXIS', 'PNB', 'BOB', 'CITI', 'KOTAK', 'YES', 'IDFC'
+  ];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
 
     if (name === 'cardNumber') {
-      formattedValue = formatCardNumber(value);
-      const network = detectCardNetwork(value);
-      const bank = detectBank(value);
-      setCardNetwork(network);
-      setBankName(bank);
+      formattedValue = value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim();
+      
+      // Only detect network after 6 digits
+      if (value.replace(/\s/g, '').length >= 6) {
+        const firstDigit = value.charAt(0);
+        if (firstDigit === '4') {
+          setCardNetwork('VISA');
+        } else if (firstDigit === '5') {
+          setCardNetwork('MASTERCARD');
+        } else if (firstDigit === '6') {
+          setCardNetwork('RUPAY');
+        } else {
+          setCardNetwork('UNKNOWN');
+        }
+      } else {
+        setCardNetwork('');
+      }
     } else if (name === 'expiryDate') {
-      // Format expiry date as MM/YY
       formattedValue = value
         .replace(/\D/g, '')
         .replace(/^(\d{2})/, '$1/')
         .substr(0, 5);
     } else if (name === 'cvv') {
-      // Only allow 3-4 digits for CVV
       formattedValue = value.replace(/\D/g, '').substr(0, 4);
     }
 
@@ -47,7 +60,7 @@ const AddCard = () => {
     
     if (!cardData.cardNumber) {
       newErrors.cardNumber = 'Card number is required';
-    } else if (!validateCardNumber(cardData.cardNumber)) {
+    } else if (cardData.cardNumber.replace(/\s/g, '').length < 16) {
       newErrors.cardNumber = 'Invalid card number';
     }
     
@@ -76,34 +89,59 @@ const AddCard = () => {
     } else if (cardData.cvv.length < 3) {
       newErrors.cvv = 'CVV must be 3-4 digits';
     }
+
+    if (!cardData.bankName) {
+      newErrors.bankName = 'Bank name is required';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
-      const newCard = {
-        id: Date.now(),
-        cardNumber: cardData.cardNumber,
-        cardHolderName: cardData.cardHolderName,
-        expiryDate: cardData.expiryDate,
-        cardType: cardNetwork,
-        bankName: bankName
-      };
-      
-      const existingCards = JSON.parse(localStorage.getItem('cards') || '[]');
-      localStorage.setItem('cards', JSON.stringify([...existingCards, newCard]));
-      navigate('/my-cards');
+      try {
+        const userId = localStorage.getItem('phoneNumber');
+        if (!userId) {
+          setErrors({ general: 'User not authenticated. Please login again.' });
+          return;
+        }
+
+        const response = await fetch('/api/cards/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'user-id': userId
+          },
+          body: JSON.stringify({
+            cardNumber: cardData.cardNumber.replace(/\s/g, ''),
+            cardName: cardData.cardHolderName,
+            expiryDate: cardData.expiryDate,
+            cardType: cardNetwork,
+            bankName: cardData.bankName
+          })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to add card');
+        }
+
+        navigate('/my-cards');
+      } catch (error) {
+        setErrors({ general: error.message });
+        console.error('Error adding card:', error);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Card</h2>
+    <div className="min-h-screen bg-gray-900 p-4">
+      <div className="max-w-md mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden p-6">
+        <h2 className="text-2xl font-bold text-white mb-6">Add New Card</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
@@ -114,16 +152,15 @@ const AddCard = () => {
               value={cardData.cardNumber}
               onChange={handleChange}
               placeholder="Card Number"
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               maxLength={19}
             />
             {errors.cardNumber && (
               <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>
             )}
             {cardNetwork && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 Card Network: {cardNetwork}
-                {bankName && ` | Bank: ${bankName}`}
               </p>
             )}
           </div>
@@ -136,10 +173,28 @@ const AddCard = () => {
               value={cardData.cardHolderName}
               onChange={handleChange}
               placeholder="Cardholder Name"
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {errors.cardHolderName && (
               <p className="text-red-500 text-sm mt-1">{errors.cardHolderName}</p>
+            )}
+          </div>
+
+          <div className="relative">
+            <FaBuilding className="absolute left-3 top-3 text-gray-400" />
+            <select
+              name="bankName"
+              value={cardData.bankName}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Bank</option>
+              {banks.map(bank => (
+                <option key={bank} value={bank}>{bank}</option>
+              ))}
+            </select>
+            {errors.bankName && (
+              <p className="text-red-500 text-sm mt-1">{errors.bankName}</p>
             )}
           </div>
 
@@ -152,7 +207,7 @@ const AddCard = () => {
                 value={cardData.expiryDate}
                 onChange={handleChange}
                 placeholder="MM/YY"
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxLength={5}
               />
               {errors.expiryDate && (
@@ -168,7 +223,7 @@ const AddCard = () => {
                 value={cardData.cvv}
                 onChange={handleChange}
                 placeholder="CVV"
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxLength={4}
               />
               {errors.cvv && (
