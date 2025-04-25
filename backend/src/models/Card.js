@@ -6,14 +6,10 @@ const cardSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  cardType: {
+  cardNumber: {
     type: String,
     required: true,
-    enum: ['VISA', 'MASTERCARD', 'RUPAY']
-  },
-  lastFourDigits: {
-    type: String,
-    required: true
+    unique: true
   },
   cardHolderName: {
     type: String,
@@ -23,15 +19,33 @@ const cardSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  token: {
+  cardType: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  bankName: {
+    type: String,
+    required: true
+  },
+  lastFourDigits: {
+    type: String,
+    required: true
   }
+}, {
+  timestamps: true
 });
 
-module.exports = mongoose.model('Card', cardSchema); 
+// Add compound index for userId and cardNumber
+cardSchema.index({ userId: 1, cardNumber: 1 }, { unique: true });
+
+// Add pre-save middleware to ensure lastFourDigits is set
+cardSchema.pre('save', function(next) {
+  if (this.isModified('cardNumber')) {
+    this.lastFourDigits = this.cardNumber.slice(-4);
+  }
+  next();
+});
+
+const Card = mongoose.model('Card', cardSchema);
+
+module.exports = Card; 

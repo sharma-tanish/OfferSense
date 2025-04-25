@@ -103,17 +103,18 @@ const AddCard = () => {
     
     if (validateForm()) {
       try {
-        const userId = localStorage.getItem('phoneNumber');
-        if (!userId) {
+        const phoneNumber = localStorage.getItem('phoneNumber');
+        if (!phoneNumber) {
           setErrors({ general: 'User not authenticated. Please login again.' });
           return;
         }
 
-        const response = await fetch('/api/cards/add', {
+        const response = await fetch('http://localhost:5000/api/cards', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'user-id': userId
+            'x-phone-number': phoneNumber,
+            'Accept': 'application/json'
           },
           body: JSON.stringify({
             cardNumber: cardData.cardNumber.replace(/\s/g, ''),

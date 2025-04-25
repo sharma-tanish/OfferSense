@@ -3,21 +3,35 @@ require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      family: 4,
-      retryWrites: true,
-      w: 'majority'
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    // Add event listeners for connection status
+    mongoose.connection.on('connected', () => {
+      console.log('Mongoose connected to DB');
+    });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('Mongoose connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('Mongoose disconnected from DB');
+    });
+
+    // Handle process termination
+    process.on('SIGINT', async () => {
+      await mongoose.connection.close();
+      console.log('Mongoose connection closed through app termination');
+      process.exit(0);
+    });
+
   } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
-    console.error('Please check your MongoDB Atlas configuration:');
-    console.error('1. Verify your IP is whitelisted in MongoDB Atlas');
-    console.error('2. Check your MongoDB URI in .env file');
-    console.error('3. Ensure your network allows connections to MongoDB Atlas');
+    console.error('Error connecting to MongoDB:', error);
     process.exit(1);
   }
 };
