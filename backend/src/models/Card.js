@@ -11,6 +11,10 @@ const cardSchema = new mongoose.Schema({
     required: true,
     enum: ['VISA', 'MASTERCARD', 'RUPAY']
   },
+  bankName: {
+    type: String,
+    required: true
+  },
   lastFourDigits: {
     type: String,
     required: true
@@ -20,6 +24,10 @@ const cardSchema = new mongoose.Schema({
     required: true
   },
   expiryDate: {
+    type: String,
+    required: true
+  },
+  cvv: {
     type: String,
     required: true
   },
