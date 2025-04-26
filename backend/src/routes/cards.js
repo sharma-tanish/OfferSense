@@ -5,10 +5,16 @@ const CardService = require('../services/cardService');
 // Middleware to verify user
 const verifyUser = (req, res, next) => {
   const userId = req.headers['user-id'];
+  console.log('Received user-id header:', userId);
+  
   if (!userId) {
+    console.log('No user-id header found');
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
-  req.userId = userId;
+  
+  // Ensure consistent format for user ID
+  req.userId = userId.startsWith('+') ? userId : `+${userId}`;
+  console.log('Processed user ID:', req.userId);
   next();
 };
 
@@ -28,10 +34,26 @@ router.post('/add', verifyUser, async (req, res) => {
 // Get all cards for a user
 router.get('/', verifyUser, async (req, res) => {
   try {
+    console.log('GET /cards request for user:', req.userId);
     const cards = await CardService.getCards(req.userId);
-    res.json({ success: true, cards });
+    console.log('Cards from service:', cards);
+    
+    // Ensure we're sending a flat response structure
+    const response = {
+      success: true,
+      cards: Array.isArray(cards) ? cards : []
+    };
+    
+    console.log('Sending response:', response);
+    res.json(response);
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Server error' });
+    console.error('Error in GET /cards route:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error',
+      message: error.message,
+      cards: []
+    });
   }
 });
 
