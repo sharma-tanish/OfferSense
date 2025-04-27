@@ -6,6 +6,7 @@ const CardService = require('../services/cardService');
 const verifyUser = (req, res, next) => {
   const userId = req.headers['user-id'];
   console.log('Received user-id header:', userId);
+  console.log('All headers:', req.headers);
   
   if (!userId) {
     console.log('No user-id header found');
@@ -35,13 +36,14 @@ router.post('/add', verifyUser, async (req, res) => {
 router.get('/', verifyUser, async (req, res) => {
   try {
     console.log('GET /cards request for user:', req.userId);
+    
     const cards = await CardService.getCards(req.userId);
     console.log('Cards from service:', cards);
     
-    // Ensure we're sending a flat response structure
+    // Ensure we're sending the cards array directly
     const response = {
       success: true,
-      cards: Array.isArray(cards) ? cards : []
+      cards: cards || []
     };
     
     console.log('Sending response:', response);
@@ -51,7 +53,6 @@ router.get('/', verifyUser, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Server error',
-      message: error.message,
       cards: []
     });
   }

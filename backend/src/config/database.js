@@ -3,7 +3,8 @@ require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ojhimanshu:ojhimanshu%40123@offer-sense.6sisbav.mongodb.net/offersense';
+    const conn = await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       family: 4,
