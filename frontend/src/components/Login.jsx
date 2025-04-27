@@ -32,6 +32,7 @@ const Login = () => {
             console.log("Response:", data);
 
             if (response.ok && data.success) {
+                localStorage.setItem('authenticatedUser', formattedMobile);
                 navigate("/otp", { state: { mobile: formattedMobile } });
             } else {
                 setError(data.error || 'Failed to send OTP');

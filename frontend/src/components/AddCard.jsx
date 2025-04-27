@@ -68,12 +68,11 @@ const AddCard = () => {
   };
 
   useEffect(() => {
-    // Check if user is authenticated
-    const authenticatedUser = localStorage.getItem('authenticatedUser');
-    if (!authenticatedUser) {
-      navigate('/login');
+    const phoneNumber = localStorage.getItem('phoneNumber');
+    if (!phoneNumber) {
+        navigate('/login');
     }
-  }, [navigate]);
+}, [navigate]);
 
   const detectCardType = (cardNumber) => {
     // Remove any non-digit characters
