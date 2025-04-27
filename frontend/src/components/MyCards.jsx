@@ -40,13 +40,8 @@ const MyCards = () => {
           throw new Error(data.error || 'Failed to fetch cards');
         }
         
-        // Handle nested response structure
-        const cardsData = data.cards;
-        const cardsArray = Array.isArray(cardsData) ? cardsData : 
-                          (cardsData && Array.isArray(cardsData.cards) ? cardsData.cards : []);
-        
-        console.log('Processed cards array:', cardsArray);
-        setCards(cardsArray);
+        // Set the cards directly from the response
+        setCards(data.cards || []);
       } catch (err) {
         console.error('Error fetching cards:', err);
         setError(err.message || 'Failed to load cards');
@@ -58,6 +53,11 @@ const MyCards = () => {
 
     fetchCards();
   }, [navigate, phoneNumber, isVerified]);
+
+  // Add effect to log cards state changes
+  useEffect(() => {
+    console.log('Cards state updated:', cards);
+  }, [cards]);
 
   const handleAddCard = () => {
     navigate('/add-card');
