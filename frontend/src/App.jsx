@@ -9,8 +9,16 @@ import Offers from './components/Offers'
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
     const isVerified = localStorage.getItem('isVerified') === 'true'
+    const phoneNumber = localStorage.getItem('phoneNumber')
+    
+    console.log('ProtectedRoute Check:', {
+        isVerified,
+        phoneNumber,
+        path: window.location.pathname
+    });
     
     if (!isVerified) {
+        console.log('User not verified, redirecting to home');
         return <Navigate to="/" replace />
     }
     

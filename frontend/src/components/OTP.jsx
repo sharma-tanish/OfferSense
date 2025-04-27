@@ -36,7 +36,7 @@ const OTP = () => {
         const enteredOtp = otp.join("");
         
         try {
-            const response = await fetch('/api/otp/verify-otp', {
+            const response = await fetch('http://localhost:5000/api/otp/verify-otp', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -51,13 +51,20 @@ const OTP = () => {
             console.log('Verification response:', data);
 
             if (response.ok && data.success) {
+                console.log('OTP verification successful');
                 // Store verification status and phone number
                 localStorage.setItem('isVerified', 'true');
                 localStorage.setItem('phoneNumber', mobile);
                 
+                console.log('Updated localStorage:', {
+                    isVerified: localStorage.getItem('isVerified'),
+                    phoneNumber: localStorage.getItem('phoneNumber')
+                });
+                
                 // Navigate to my-cards page and replace history
                 navigate("/my-cards", { replace: true });
             } else {
+                console.error('OTP verification failed:', data);
                 setError(data.message || "Invalid OTP. Please try again.");
             }
         } catch (err) {
