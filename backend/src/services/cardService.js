@@ -14,8 +14,12 @@ class CardService {
       const token = this.generateToken(cardData.cardNumber);
       const lastFourDigits = cardData.cardNumber.slice(-4);
 
+      // Ensure consistent format for user ID
+      const formattedUserId = userId.startsWith('+') ? userId : `+${userId}`;
+      console.log('Formatted user ID:', formattedUserId);
+
       const newCard = new Card({
-        userId,
+        userId: formattedUserId,
         cardType: cardData.cardType,
         bankName: cardData.bankName,
         lastFourDigits,
@@ -25,8 +29,18 @@ class CardService {
         token
       });
 
+      console.log('Attempting to save card:', {
+        userId: formattedUserId,
+        cardType: cardData.cardType,
+        bankName: cardData.bankName,
+        lastFourDigits,
+        cardHolderName: cardData.cardName,
+        expiryDate: cardData.expiryDate
+      });
+
       await newCard.save();
       console.log('Card saved successfully:', newCard); // Debug log
+
       return {
         success: true,
         card: {
@@ -50,25 +64,30 @@ class CardService {
   // Get all cards for a user
   static async getCards(userId) {
     try {
-      console.log('Getting cards for user:', userId);
-      console.log('Database query:', { userId });
+      // Ensure consistent format for user ID
+      const formattedUserId = userId.startsWith('+') ? userId : `+${userId}`;
+      console.log('Getting cards for user:', formattedUserId);
+      console.log('Database query:', { userId: formattedUserId });
       
-      const cards = await Card.find({ userId });
-      console.log('Raw database response:', cards);
+      // Test database connection
+      const db = Card.db;
+      console.log('Database connection state:', db.readyState);
       
-      if (!cards || cards.length === 0) {
-        console.log('No cards found for user:', userId);
-        return {
-          success: true,
-          cards: []
-        };
+      // First check if the user exists in the database
+      const userCards = await Card.find({ userId: formattedUserId });
+      console.log('Raw database response:', userCards);
+      console.log('Number of cards found:', userCards.length);
+      
+      if (!userCards || userCards.length === 0) {
+        console.log('No cards found for user:', formattedUserId);
+        return [];
       }
       
       // Format the cards array
-      const formattedCards = cards.map(card => {
+      const formattedCards = userCards.map(card => {
         console.log('Processing card:', card);
         const formattedCard = {
-          _id: card._id,
+          _id: card._id.toString(), // Convert ObjectId to string
           cardType: card.cardType,
           bankName: card.bankName,
           lastFourDigits: card.lastFourDigits,
@@ -80,16 +99,10 @@ class CardService {
       });
 
       console.log('Final formatted cards:', formattedCards);
-      return {
-        success: true,
-        cards: formattedCards
-      };
+      return formattedCards;
     } catch (error) {
       console.error('Error in getCards:', error);
-      return {
-        success: false,
-        error: 'Failed to retrieve cards'
-      };
+      return [];
     }
   }
 
