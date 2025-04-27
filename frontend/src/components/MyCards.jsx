@@ -13,6 +13,7 @@ const MyCards = () => {
   useEffect(() => {
     // Check if user is verified
     if (!isVerified) {
+      console.log('User not verified, redirecting to home');
       navigate('/');
       return;
     }
@@ -21,29 +22,32 @@ const MyCards = () => {
     const fetchCards = async () => {
       setLoading(true);
       try {
-        console.log('Fetching cards for user:', phoneNumber);
-        const response = await fetch('/api/cards', {
+        console.log('Starting to fetch cards for user:', phoneNumber);
+        const response = await fetch('http://localhost:5000/api/cards', {
           headers: {
             'Content-Type': 'application/json',
             'user-id': phoneNumber
           }
         });
 
+        console.log('Response status:', response.status);
         const data = await response.json();
         console.log('Raw response data:', data);
         
         if (!response.ok) {
+          console.error('Response not OK:', response.status, data);
           throw new Error(data.error || data.message || 'Failed to fetch cards');
         }
         
         if (!data.success) {
+          console.error('Response not successful:', data);
           throw new Error(data.error || 'Failed to fetch cards');
         }
         
-        // Set the cards directly from the response
+        console.log('Setting cards:', data.cards);
         setCards(data.cards || []);
       } catch (err) {
-        console.error('Error fetching cards:', err);
+        console.error('Error in fetchCards:', err);
         setError(err.message || 'Failed to load cards');
         setCards([]);
       } finally {
@@ -52,7 +56,7 @@ const MyCards = () => {
     };
 
     fetchCards();
-  }, [navigate, phoneNumber, isVerified]);
+  }, [phoneNumber, isVerified, navigate]);
 
   // Add effect to log cards state changes
   useEffect(() => {

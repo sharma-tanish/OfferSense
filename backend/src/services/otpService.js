@@ -15,7 +15,7 @@ const client = twilio(accountSid, authToken);
 
 // List of verified phone numbers for trial account
 const verifiedNumbers = [
-  '+919631924059'  // Your verified number
+  '+918851935588'  // Your verified number
 ];
 
 class OTPService {
