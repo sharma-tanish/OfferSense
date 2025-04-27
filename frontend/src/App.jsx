@@ -4,6 +4,7 @@ import Login from './components/Login'
 import OTP from './components/OTP'
 import MyCards from './components/MyCards'
 import AddCard from './components/AddCard'
+import Offers from './components/Offers'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -36,6 +37,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <AddCard />
+                        </ProtectedRoute>
+                    } 
+                />
+                <Route 
+                    path="/offers" 
+                    element={
+                        <ProtectedRoute>
+                            <Offers />
                         </ProtectedRoute>
                     } 
                 />

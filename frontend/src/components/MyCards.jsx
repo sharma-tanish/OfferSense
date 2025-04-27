@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaTrash, FaGift } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaGift, FaHome, FaSignOutAlt } from 'react-icons/fa';
 
 const MyCards = () => {
   const [cards, setCards] = useState([]);
@@ -21,33 +21,73 @@ const MyCards = () => {
     const fetchCards = async () => {
       setLoading(true);
       try {
+        console.log('Fetching cards for user:', phoneNumber);
         const response = await fetch('/api/cards', {
           headers: {
             'Content-Type': 'application/json',
-            'user-id': phoneNumber // Send phone number as user identifier
+            'user-id': phoneNumber
           }
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch cards');
-        }
-
         const data = await response.json();
-        if (data.success) {
-          setCards(data.cards);
-        } else {
-          throw new Error(data.message || 'Failed to fetch cards');
+        console.log('Raw response data:', data);
+        
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Failed to fetch cards');
         }
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch cards');
+        }
+        
+        // Set the cards directly from the response
+        setCards(data.cards || []);
       } catch (err) {
         console.error('Error fetching cards:', err);
         setError(err.message || 'Failed to load cards');
+        setCards([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCards();
-  }, [navigate, isVerified, phoneNumber]);
+  }, [navigate, phoneNumber, isVerified]);
+
+  // Add effect to log cards state changes
+  useEffect(() => {
+    console.log('Cards state updated:', cards);
+  }, [cards]);
+
+  const handleAddCard = () => {
+    navigate('/add-card');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('phoneNumber');
+    localStorage.removeItem('isVerified');
+    navigate('/');
+  };
+
+  const handleGetOffers = (card) => {
+    console.log('Navigating to offers with card:', card);
+    if (!card || !card._id) {
+      console.error('Invalid card data:', card);
+      return;
+    }
+    navigate('/offers', { 
+      state: { 
+        card: {
+          _id: card._id,
+          cardType: card.cardType,
+          bankName: card.bankName,
+          lastFourDigits: card.lastFourDigits,
+          cardHolderName: card.cardHolderName,
+          expiryDate: card.expiryDate
+        }
+      } 
+    });
+  };
 
   const handleDeleteCard = async (cardId) => {
     try {
@@ -65,41 +105,31 @@ const MyCards = () => {
 
       const data = await response.json();
       if (data.success) {
-        setCards(cards.filter(card => card.id !== cardId));
+        // Refresh the cards list
+        const updatedCards = cards.filter(card => card._id !== cardId);
+        setCards(updatedCards);
       } else {
-        throw new Error(data.message || 'Failed to delete card');
+        throw new Error(data.error || 'Failed to delete card');
       }
     } catch (err) {
-      console.error('Error deleting card:', err);
       setError(err.message || 'Failed to delete card');
     }
   };
 
-  const handleGetOffers = (card) => {
-    alert(`Getting offers for ${card.cardType} card ending in ${card.lastFourDigits}`);
-  };
-
-  const handleAddCard = () => {
-    navigate('/add-card');
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('isVerified');
-    localStorage.removeItem('phoneNumber');
-    navigate('/', { replace: true });
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
+    <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
-      <div className="bg-black/50 backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
+      <div className="bg-gray-800 shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-white">Welcome</h1>
-              {phoneNumber && (
-                <span className="ml-2 text-gray-400">+{phoneNumber}</span>
-              )}
+              <button
+                onClick={() => navigate('/')}
+                className="inline-flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-150"
+              >
+                <FaHome className="mr-2" />
+                Home
+              </button>
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -113,6 +143,7 @@ const MyCards = () => {
                 onClick={handleLogout}
                 className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-150"
               >
+                <FaSignOutAlt className="mr-2" />
                 Logout
               </button>
             </div>
@@ -129,25 +160,28 @@ const MyCards = () => {
         )}
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
         ) : cards.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map(card => (
-              <div key={card.id} className="bg-white/5 backdrop-blur-sm rounded-lg overflow-hidden border border-white/10">
+            {cards.map((card) => (
+              <div key={card._id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
                 <div className="p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-white">{card.cardType}</h3>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-indigo-400">{card.bankName}</h3>
+                      <p className="text-sm text-gray-400">{card.cardType}</p>
+                    </div>
                     <button
-                      onClick={() => handleDeleteCard(card.id)}
-                      className="text-red-400 hover:text-red-300 transition-colors"
+                      onClick={() => handleDeleteCard(card._id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors duration-150"
                     >
                       <FaTrash />
                     </button>
                   </div>
-                  <div className="space-y-2 text-gray-400">
-                    <p>**** **** **** {card.lastFourDigits}</p>
+                  <div className="space-y-2">
+                    <p className="text-2xl font-bold">**** **** **** {card.lastFourDigits}</p>
                     <p>{card.cardHolderName}</p>
                     <p>Expires: {card.expiryDate}</p>
                   </div>
@@ -164,11 +198,10 @@ const MyCards = () => {
           </div>
         ) : (
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-white mb-2">No cards added yet</h3>
-            <p className="text-gray-400 mb-6">Add your first card to get started</p>
+            <p className="text-gray-400">No cards added yet</p>
             <button
               onClick={handleAddCard}
-              className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-150"
+              className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-150"
             >
               <FaPlus className="mr-2" />
               Add Your First Card
