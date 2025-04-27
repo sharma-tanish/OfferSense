@@ -3,9 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { FaHome, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
 
 const Offers = () => {
-  const [offers, setOffers] = useState([]);
+  const [offers, setOffers] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentDateTime, setCurrentDateTime] = useState('');
+  const [hotelOffers, setHotelOffers] = useState('');
+  const [flightOffers, setFlightOffers] = useState('');
+  const [tourOffers, setTourOffers] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { card } = location.state || {};
@@ -26,27 +30,29 @@ const Offers = () => {
     const fetchOffers = async () => {
       setLoading(true);
       try {
-        console.log('Fetching offers for card:', card);
-        const response = await fetch('/api/offers', {
+        const response = await fetch('http://localhost:5000/api/offers', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'user-id': phoneNumber
           },
-          body: JSON.stringify({ cards: [card] })
+          body: JSON.stringify({ cardId: card._id })
         });
-
         if (!response.ok) {
-          throw new Error('Failed to fetch offers');
+          throw new Error('Failed to fetch offers from backend');
         }
-
         const data = await response.json();
-        console.log('Offers response:', data);
-        
-        if (data.success) {
-          setOffers(data.offers[0].offers);
+        if (data.success && data.offers) {
+          setCurrentDateTime(data.currentDateTime || '');
+          // Parse offers string into 3 categories
+          const hotel = data.offers.match(/Hotel Offers[\s\S]*?(?=\n\d+\.|Flight Offers|Tour Offers|$)/i);
+          const flight = data.offers.match(/Flight Offers[\s\S]*?(?=\n\d+\.|Hotel Offers|Tour Offers|$)/i);
+          const tour = data.offers.match(/Tour Offers[\s\S]*?(?=\n\d+\.|Hotel Offers|Flight Offers|$)/i);
+          setHotelOffers(hotel ? hotel[0].trim() : 'No hotel offers found.');
+          setFlightOffers(flight ? flight[0].trim() : 'No flight offers found.');
+          setTourOffers(tour ? tour[0].trim() : 'No tour offers found.');
         } else {
-          throw new Error(data.error || 'Failed to fetch offers');
+          throw new Error(data.error || 'No offers found');
         }
       } catch (err) {
         console.error('Error fetching offers:', err);
@@ -119,26 +125,27 @@ const Offers = () => {
               <p className="text-gray-400">{card.cardType} •••• {card.lastFourDigits}</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {offers.map((offer) => (
-                <div key={offer.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-white mb-2">{offer.title}</h3>
-                    <p className="text-gray-400 mb-4">{offer.description}</p>
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-400">
-                        Valid till: {new Date(offer.validTill).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Min. spend: ₹{offer.minSpend}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Max. cashback: ₹{offer.maxCashback}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-indigo-300 mb-2">Curated Offers</h3>
+              <p className="text-gray-400">Current Date and Time: {currentDateTime}</p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-8 mt-8">
+              {/* Hotel Offers Pane */}
+              <div className="flex-1 bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl shadow-xl p-6 min-h-[300px] border-2 border-blue-400/30">
+                <h4 className="text-xl font-bold text-blue-200 mb-4 text-center">🏨 Hotel Offers</h4>
+                <pre className="whitespace-pre-wrap text-blue-100 font-mono text-sm">{hotelOffers}</pre>
+              </div>
+              {/* Flight Offers Pane */}
+              <div className="flex-1 bg-gradient-to-br from-purple-900 to-purple-700 rounded-2xl shadow-xl p-6 min-h-[300px] border-2 border-purple-400/30">
+                <h4 className="text-xl font-bold text-purple-200 mb-4 text-center">✈️ Flight Offers</h4>
+                <pre className="whitespace-pre-wrap text-purple-100 font-mono text-sm">{flightOffers}</pre>
+              </div>
+              {/* Tour Offers Pane */}
+              <div className="flex-1 bg-gradient-to-br from-pink-900 to-pink-700 rounded-2xl shadow-xl p-6 min-h-[300px] border-2 border-pink-400/30">
+                <h4 className="text-xl font-bold text-pink-200 mb-4 text-center">🗺️ Tour Offers</h4>
+                <pre className="whitespace-pre-wrap text-pink-100 font-mono text-sm">{tourOffers}</pre>
+              </div>
             </div>
           </div>
         )}
@@ -147,4 +154,4 @@ const Offers = () => {
   );
 };
 
-export default Offers; 
+export default Offers;
