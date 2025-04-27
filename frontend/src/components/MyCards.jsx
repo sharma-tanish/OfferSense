@@ -120,6 +120,11 @@ const MyCards = () => {
     }
   };
 
+  console.log('Current localStorage:', {
+    isVerified: localStorage.getItem('isVerified'),
+    phoneNumber: localStorage.getItem('phoneNumber')
+  });
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
