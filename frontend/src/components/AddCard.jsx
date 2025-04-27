@@ -41,6 +41,12 @@ const AddCard = () => {
       { start: '510000000000', end: '559999999999' },
       { start: '222100000000', end: '272099999999' }
     ],
+    AMEX: [
+      { start: '34', end: '34' },
+      { start: '37', end: '37' },
+      { start: '340000', end: '349999' },
+      { start: '370000', end: '379999' }
+    ],
     RUPAY: [
       { start: '60', end: '60' },
       { start: '6521', end: '6522' },
@@ -97,7 +103,8 @@ const AddCard = () => {
   };
 
   const handleCvvChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+    // Allow up to 4 digits for CVV
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
     setCardData({...cardData, cvv: value});
   };
 
@@ -112,8 +119,9 @@ const AddCard = () => {
       return;
     }
 
-    if (cardData.cvv.length !== 3) {
-      setError('Please enter a valid 3-digit CVV');
+    // Check CVV length - must be either 3 or 4 digits
+    if (cardData.cvv.length !== 3 && cardData.cvv.length !== 4) {
+      setError('Please enter a valid CVV (3 or 4 digits)');
       setLoading(false);
       return;
     }
@@ -243,7 +251,7 @@ const AddCard = () => {
                   value={cardData.cvv}
                   onChange={handleCvvChange}
                   placeholder="123"
-                  maxLength={3}
+                  maxLength={4}
                   className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
                   required
                 />
