@@ -1,17 +1,9 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Debug logging
-console.log('Current working directory:', process.cwd());
-console.log('Environment variables loaded:', process.env.MONGODB_URI ? 'Yes' : 'No');
-console.log('MONGODB_URI value:', process.env.MONGODB_URI);
-
 const connectDB = async () => {
   try {
     const MONGODB_URI = process.env.MONGODB_URI;
-    if (!MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in environment variables');
-    }
     const conn = await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
