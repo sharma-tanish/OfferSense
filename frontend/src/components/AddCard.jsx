@@ -133,7 +133,7 @@ const AddCard = () => {
     }
 
     try {
-      const response = await fetch('/api/cards/add', {
+      const response = await fetch('http://localhost:5000/api/cards/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +150,8 @@ const AddCard = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add card');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add card');
       }
 
       const data = await response.json();

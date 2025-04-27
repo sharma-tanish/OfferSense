@@ -22,12 +22,21 @@ const verifyUser = (req, res, next) => {
 // Add a new card
 router.post('/add', verifyUser, async (req, res) => {
   try {
+    console.log('Add card request received:', {
+      userId: req.userId,
+      body: req.body
+    });
+    
     const result = await CardService.addCard(req.userId, req.body);
+    console.log('Card service result:', result);
+    
     if (!result.success) {
+      console.log('Card service returned error:', result.error);
       return res.status(400).json(result);
     }
     res.json(result);
   } catch (error) {
+    console.error('Error in add card route:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });

@@ -6,10 +6,16 @@ const cardSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  cardNumber: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
   cardType: {
     type: String,
     required: true,
-    enum: ['VISA', 'MASTERCARD', 'RUPAY']
+    enum: ['VISA', 'MASTERCARD', 'RUPAY', 'AMEX']
   },
   bankName: {
     type: String,

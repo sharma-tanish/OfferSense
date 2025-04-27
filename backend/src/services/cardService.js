@@ -10,7 +10,41 @@ class CardService {
   // Add a new card
   static async addCard(userId, cardData) {
     try {
-      console.log('Adding card for user:', userId); // Debug log
+      console.log('Adding card with data:', {
+        userId,
+        cardData
+      });
+
+      // Validate required fields
+      if (!cardData.cardNumber || !cardData.cardType || !cardData.bankName || 
+          !cardData.cardName || !cardData.expiryDate || !cardData.cvv) {
+        console.log('Missing required fields:', {
+          cardNumber: !!cardData.cardNumber,
+          cardType: !!cardData.cardType,
+          bankName: !!cardData.bankName,
+          cardName: !!cardData.cardName,
+          expiryDate: !!cardData.expiryDate,
+          cvv: !!cardData.cvv
+        });
+        return {
+          success: false,
+          error: 'Missing required fields'
+        };
+      }
+
+      // Check if card already exists
+      const existingCard = await Card.findOne({ 
+        userId: userId.startsWith('+') ? userId : `+${userId}`,
+        cardNumber: cardData.cardNumber
+      });
+
+      if (existingCard) {
+        return {
+          success: false,
+          error: 'This card is already added'
+        };
+      }
+
       const token = this.generateToken(cardData.cardNumber);
       const lastFourDigits = cardData.cardNumber.slice(-4);
 
@@ -20,6 +54,7 @@ class CardService {
 
       const newCard = new Card({
         userId: formattedUserId,
+        cardNumber: cardData.cardNumber, // Store the full card number
         cardType: cardData.cardType,
         bankName: cardData.bankName,
         lastFourDigits,
@@ -39,7 +74,7 @@ class CardService {
       });
 
       await newCard.save();
-      console.log('Card saved successfully:', newCard); // Debug log
+      console.log('Card saved successfully:', newCard);
 
       return {
         success: true,
@@ -54,9 +89,15 @@ class CardService {
       };
     } catch (error) {
       console.error('Error adding card:', error);
+      if (error.code === 11000) {
+        return {
+          success: false,
+          error: 'This card is already added'
+        };
+      }
       return {
         success: false,
-        error: 'Failed to add card'
+        error: error.message || 'Failed to add card'
       };
     }
   }
