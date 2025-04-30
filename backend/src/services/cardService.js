@@ -2,9 +2,9 @@ const Card = require('../models/Card');
 const crypto = require('crypto');
 
 class CardService {
-  // Generate a secure token for the card
-  static generateToken(cardNumber) {
-    return crypto.createHash('sha256').update(cardNumber).digest('hex');
+  // Generate a secure token for the card using only the last 4 digits
+  static generateToken(lastFourDigits) {
+    return crypto.createHash('sha256').update(lastFourDigits).digest('hex');
   }
 
   // Add a new card
@@ -17,14 +17,13 @@ class CardService {
 
       // Validate required fields
       if (!cardData.cardNumber || !cardData.cardType || !cardData.bankName || 
-          !cardData.cardName || !cardData.expiryDate || !cardData.cvv) {
+          !cardData.cardName || !cardData.expiryDate) {
         console.log('Missing required fields:', {
           cardNumber: !!cardData.cardNumber,
           cardType: !!cardData.cardType,
           bankName: !!cardData.bankName,
           cardName: !!cardData.cardName,
-          expiryDate: !!cardData.expiryDate,
-          cvv: !!cardData.cvv
+          expiryDate: !!cardData.expiryDate
         });
         return {
           success: false,
@@ -32,69 +31,120 @@ class CardService {
         };
       }
 
-      // Check if card already exists
-      const existingCard = await Card.findOne({ 
-        userId: userId.startsWith('+') ? userId : `+${userId}`,
-        cardNumber: cardData.cardNumber
-      });
+      const lastFourDigits = cardData.cardNumber.slice(-4);
+      const formattedUserId = userId.startsWith('+') ? userId : `+${userId}`;
 
-      if (existingCard) {
+      // Check database connection
+      const db = Card.db;
+      if (db.readyState !== 1) {
+        console.error('Database not connected. State:', db.readyState);
         return {
           success: false,
-          error: 'This card is already added'
+          error: 'Database connection error'
         };
       }
 
-      const token = this.generateToken(cardData.cardNumber);
-      const lastFourDigits = cardData.cardNumber.slice(-4);
+      try {
+        // Check if card already exists for this user (only active cards)
+        const existingCard = await Card.findOne({ 
+          userId: formattedUserId,
+          lastFourDigits: lastFourDigits,
+          status: 'active'
+        }).exec();
 
-      // Ensure consistent format for user ID
-      const formattedUserId = userId.startsWith('+') ? userId : `+${userId}`;
-      console.log('Formatted user ID:', formattedUserId);
+        console.log('Existing card check result:', existingCard);
 
-      const newCard = new Card({
-        userId: formattedUserId,
-        cardNumber: cardData.cardNumber, // Store the full card number
-        cardType: cardData.cardType,
-        bankName: cardData.bankName,
-        lastFourDigits,
-        cardHolderName: cardData.cardName,
-        expiryDate: cardData.expiryDate,
-        cvv: cardData.cvv,
-        token
-      });
-
-      console.log('Attempting to save card:', {
-        userId: formattedUserId,
-        cardType: cardData.cardType,
-        bankName: cardData.bankName,
-        lastFourDigits,
-        cardHolderName: cardData.cardName,
-        expiryDate: cardData.expiryDate
-      });
-
-      await newCard.save();
-      console.log('Card saved successfully:', newCard);
-
-      return {
-        success: true,
-        card: {
-          _id: newCard._id,
-          cardType: newCard.cardType,
-          bankName: newCard.bankName,
-          lastFourDigits: newCard.lastFourDigits,
-          cardHolderName: newCard.cardHolderName,
-          expiryDate: newCard.expiryDate
+        if (existingCard) {
+          console.log('Card already exists for user:', {
+            userId: formattedUserId,
+            lastFourDigits
+          });
+          return {
+            success: false,
+            error: 'This card is already added'
+          };
         }
-      };
+
+        // Check if there's a deleted card that can be reactivated
+        const deletedCard = await Card.findOne({
+          userId: formattedUserId,
+          lastFourDigits: lastFourDigits,
+          status: 'deleted'
+        }).exec();
+
+        if (deletedCard) {
+          // Update the deleted card with new information
+          deletedCard.cardType = cardData.cardType;
+          deletedCard.bankName = cardData.bankName;
+          deletedCard.cardHolderName = cardData.cardName;
+          deletedCard.expiryDate = cardData.expiryDate;
+          deletedCard.status = 'active';
+          
+          await deletedCard.save();
+          console.log('Reactivated previously deleted card:', deletedCard);
+
+          return {
+            success: true,
+            card: {
+              _id: deletedCard._id,
+              cardType: deletedCard.cardType,
+              bankName: deletedCard.bankName,
+              lastFourDigits: deletedCard.lastFourDigits,
+              cardHolderName: deletedCard.cardHolderName,
+              expiryDate: deletedCard.expiryDate
+            }
+          };
+        }
+
+        const token = this.generateToken(lastFourDigits);
+
+        const newCard = new Card({
+          userId: formattedUserId,
+          lastFourDigits,
+          cardType: cardData.cardType,
+          bankName: cardData.bankName,
+          cardHolderName: cardData.cardName,
+          expiryDate: cardData.expiryDate,
+          token,
+          status: 'active'
+        });
+
+        console.log('Attempting to save card:', {
+          userId: formattedUserId,
+          cardType: cardData.cardType,
+          bankName: cardData.bankName,
+          lastFourDigits,
+          cardHolderName: cardData.cardName,
+          expiryDate: cardData.expiryDate
+        });
+
+        await newCard.save();
+        console.log('Card saved successfully:', newCard);
+
+        return {
+          success: true,
+          card: {
+            _id: newCard._id,
+            cardType: newCard.cardType,
+            bankName: newCard.bankName,
+            lastFourDigits: newCard.lastFourDigits,
+            cardHolderName: newCard.cardHolderName,
+            expiryDate: newCard.expiryDate
+          }
+        };
+      } catch (dbError) {
+        console.error('Database operation error:', dbError);
+        if (dbError.code === 11000) {
+          // Handle duplicate key error
+          return {
+            success: false,
+            error: 'This card is already added'
+          };
+        }
+        throw dbError; // Re-throw other database errors
+      }
     } catch (error) {
       console.error('Error adding card:', error);
-      if (error.code === 11000) {
-        return {
-          success: false,
-          error: 'This card is already added'
-        };
-      }
       return {
         success: false,
         error: error.message || 'Failed to add card'
@@ -108,15 +158,19 @@ class CardService {
       // Ensure consistent format for user ID
       const formattedUserId = userId.startsWith('+') ? userId : `+${userId}`;
       console.log('Getting cards for user:', formattedUserId);
-      console.log('Database query:', { userId: formattedUserId });
       
-      // Test database connection
+      // Check database connection
       const db = Card.db;
-      console.log('Database connection state:', db.readyState);
+      if (db.readyState !== 1) {
+        console.error('Database not connected. State:', db.readyState);
+        return [];
+      }
       
-      // First check if the user exists in the database
-      const userCards = await Card.find({ userId: formattedUserId });
-      console.log('Raw database response:', userCards);
+      // Only get active cards
+      const userCards = await Card.find({ 
+        userId: formattedUserId,
+        status: 'active'
+      }).exec();
       console.log('Number of cards found:', userCards.length);
       
       if (!userCards || userCards.length === 0) {
@@ -125,21 +179,15 @@ class CardService {
       }
       
       // Format the cards array
-      const formattedCards = userCards.map(card => {
-        console.log('Processing card:', card);
-        const formattedCard = {
-          _id: card._id.toString(), // Convert ObjectId to string
-          cardType: card.cardType,
-          bankName: card.bankName,
-          lastFourDigits: card.lastFourDigits,
-          cardHolderName: card.cardHolderName,
-          expiryDate: card.expiryDate
-        };
-        console.log('Formatted card:', formattedCard);
-        return formattedCard;
-      });
+      const formattedCards = userCards.map(card => ({
+        _id: card._id.toString(),
+        cardType: card.cardType,
+        bankName: card.bankName,
+        lastFourDigits: card.lastFourDigits,
+        cardHolderName: card.cardHolderName,
+        expiryDate: card.expiryDate
+      }));
 
-      console.log('Final formatted cards:', formattedCards);
       return formattedCards;
     } catch (error) {
       console.error('Error in getCards:', error);
@@ -147,16 +195,36 @@ class CardService {
     }
   }
 
-  // Delete a card
+  // Delete a card (soft delete)
   static async deleteCard(userId, cardId) {
     try {
-      const card = await Card.findOneAndDelete({ _id: cardId, userId });
+      // Check database connection
+      const db = Card.db;
+      if (db.readyState !== 1) {
+        console.error('Database not connected. State:', db.readyState);
+        return {
+          success: false,
+          error: 'Database connection error'
+        };
+      }
+
+      const formattedUserId = userId.startsWith('+') ? userId : `+${userId}`;
+      
+      // Find the card and update its status to 'deleted'
+      const card = await Card.findOneAndUpdate(
+        { _id: cardId, userId: formattedUserId },
+        { status: 'deleted' },
+        { new: true }
+      ).exec();
+
       if (!card) {
         return {
           success: false,
           error: 'Card not found or unauthorized'
         };
       }
+
+      console.log('Card soft deleted successfully:', cardId);
       return { success: true };
     } catch (error) {
       console.error('Error deleting card:', error);

@@ -6,10 +6,9 @@ const cardSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  cardNumber: {
+  lastFourDigits: {
     type: String,
     required: true,
-    unique: true,
     index: true
   },
   cardType: {
@@ -21,10 +20,6 @@ const cardSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  lastFourDigits: {
-    type: String,
-    required: true
-  },
   cardHolderName: {
     type: String,
     required: true
@@ -33,19 +28,26 @@ const cardSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  cvv: {
+  token: {
     type: String,
     required: true
   },
-  token: {
+  status: {
     type: String,
     required: true,
-    unique: true
+    enum: ['active', 'deleted'],
+    default: 'active'
   },
   createdAt: {
     type: Date,
     default: Date.now
   }
+});
+
+// Create a compound index for userId and lastFourDigits, but only for active cards
+cardSchema.index({ userId: 1, lastFourDigits: 1, status: 1 }, { 
+  unique: true,
+  partialFilterExpression: { status: 'active' }
 });
 
 module.exports = mongoose.model('Card', cardSchema); 

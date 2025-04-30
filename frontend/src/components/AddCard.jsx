@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 
 const AddCard = () => {
   const navigate = useNavigate();
@@ -8,13 +8,11 @@ const AddCard = () => {
     cardNumber: '',
     bankName: '',
     cardName: '',
-    expiryDate: '',
-    cvv: ''
+    expiryDate: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [cardType, setCardType] = useState('');
-  const [showCvv, setShowCvv] = useState(false);
 
   const bankOptions = [
     'HDFC BANK',
@@ -72,7 +70,7 @@ const AddCard = () => {
     if (!phoneNumber) {
         navigate('/login');
     }
-}, [navigate]);
+  }, [navigate]);
 
   const detectCardType = (cardNumber) => {
     // Remove any non-digit characters
@@ -101,12 +99,6 @@ const AddCard = () => {
     setCardType(detectCardType(value));
   };
 
-  const handleCvvChange = (e) => {
-    // Allow up to 4 digits for CVV
-    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-    setCardData({...cardData, cvv: value});
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -114,13 +106,6 @@ const AddCard = () => {
     
     if (cardData.cardNumber.length !== 16) {
       setError('Please enter a valid 16-digit card number');
-      setLoading(false);
-      return;
-    }
-
-    // Check CVV length - must be either 3 or 4 digits
-    if (cardData.cvv.length !== 3 && cardData.cvv.length !== 4) {
-      setError('Please enter a valid CVV (3 or 4 digits)');
       setLoading(false);
       return;
     }
@@ -143,8 +128,7 @@ const AddCard = () => {
           cardType: cardType,
           bankName: cardData.bankName,
           cardName: cardData.cardName,
-          expiryDate: cardData.expiryDate,
-          cvv: cardData.cvv
+          expiryDate: cardData.expiryDate
         })
       });
 
@@ -154,7 +138,7 @@ const AddCard = () => {
       }
 
       const data = await response.json();
-      console.log('Add card response:', data); // Debug log
+      console.log('Add card response:', data);
       
       if (data.success) {
         navigate('/my-cards');
@@ -232,38 +216,15 @@ const AddCard = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-200">Expiry Date</label>
-              <input
-                type="month"
-                value={cardData.expiryDate}
-                onChange={(e) => setCardData({...cardData, expiryDate: e.target.value})}
-                className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-200">CVV</label>
-              <div className="relative">
-                <input
-                  type={showCvv ? "text" : "password"}
-                  value={cardData.cvv}
-                  onChange={handleCvvChange}
-                  placeholder="123"
-                  maxLength={4}
-                  className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCvv(!showCvv)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                >
-                  {showCvv ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-200">Expiry Date</label>
+            <input
+              type="month"
+              value={cardData.expiryDate}
+              onChange={(e) => setCardData({...cardData, expiryDate: e.target.value})}
+              className="mt-1 block w-full rounded-lg bg-gray-700/50 border border-gray-600 text-white px-4 py-2 focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
+              required
+            />
           </div>
 
           <div className="flex gap-4">
