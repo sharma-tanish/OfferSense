@@ -3,9 +3,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { FaHome, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
 
 const Offers = () => {
-  const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [offerData, setOfferData] = useState({
+    currentDateTime: '',
+    offers: {
+      hotel: '',
+      flight: '',
+      tour: ''
+    }
+  });
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { card } = location.state || {};
@@ -26,27 +34,48 @@ const Offers = () => {
     const fetchOffers = async () => {
       setLoading(true);
       try {
-        console.log('Fetching offers for card:', card);
-        const response = await fetch('/api/offers', {
+        const response = await fetch('http://localhost:5000/api/offers', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'user-id': phoneNumber
           },
-          body: JSON.stringify({ cards: [card] })
+          body: JSON.stringify({ cardId: card._id })
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch offers');
+          throw new Error('Failed to fetch offers from backend');
         }
 
         const data = await response.json();
-        console.log('Offers response:', data);
-        
-        if (data.success) {
-          setOffers(data.offers[0].offers);
+        console.log('Received offers data:', data);
+
+        if (data.success && data.offers) {
+          // Process all offers data at once
+          const sections = data.offers.split('###').filter(Boolean);
+          const processedOffers = {
+            currentDateTime: data.currentDateTime || '',
+            offers: {
+              hotel: '',
+              flight: '',
+              tour: ''
+            }
+          };
+
+          sections.forEach(section => {
+            const trimmedSection = section.trim();
+            if (trimmedSection.toLowerCase().includes('hotel offers')) {
+              processedOffers.offers.hotel = trimmedSection;
+            } else if (trimmedSection.toLowerCase().includes('flight offers')) {
+              processedOffers.offers.flight = trimmedSection;
+            } else if (trimmedSection.toLowerCase().includes('tour offers')) {
+              processedOffers.offers.tour = trimmedSection;
+            }
+          });
+
+          setOfferData(processedOffers);
         } else {
-          throw new Error(data.error || 'Failed to fetch offers');
+          throw new Error(data.error || 'No offers found');
         }
       } catch (err) {
         console.error('Error fetching offers:', err);
@@ -63,6 +92,15 @@ const Offers = () => {
     localStorage.removeItem('phoneNumber');
     localStorage.removeItem('isVerified');
     navigate('/');
+  };
+
+  const formatOffers = (offersText) => {
+    if (!offersText) return 'No offers available.';
+    
+    // Remove the category header
+    const withoutHeader = offersText.split('\n').slice(1).join('\n');
+    
+    return withoutHeader.trim();
   };
 
   return (
@@ -119,26 +157,44 @@ const Offers = () => {
               <p className="text-gray-400">{card.cardType} •••• {card.lastFourDigits}</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {offers.map((offer) => (
-                <div key={offer.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg">
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-white mb-2">{offer.title}</h3>
-                    <p className="text-gray-400 mb-4">{offer.description}</p>
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-400">
-                        Valid till: {new Date(offer.validTill).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Min. spend: ₹{offer.minSpend}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Max. cashback: ₹{offer.maxCashback}
-                      </p>
-                    </div>
-                  </div>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold text-indigo-300 mb-2">Curated Offers</h3>
+              <p className="text-gray-400">Current Date and Time: {offerData.currentDateTime}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+              {/* Hotel Offers Card */}
+              <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl shadow-xl p-6 min-h-[400px] border-2 border-blue-400/30">
+                <h4 className="text-xl font-bold text-blue-200 mb-4 flex items-center justify-center">
+                  <span className="mr-2">🏨</span> Hotel Offers
+                </h4>
+                <div className="prose prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-blue-100 text-sm leading-relaxed" 
+                       dangerouslySetInnerHTML={{ __html: formatOffers(offerData.offers.hotel).replace(/\*\*/g, '') }} />
                 </div>
-              ))}
+              </div>
+
+              {/* Flight Offers Card */}
+              <div className="bg-gradient-to-br from-purple-900 to-purple-700 rounded-2xl shadow-xl p-6 min-h-[400px] border-2 border-purple-400/30">
+                <h4 className="text-xl font-bold text-purple-200 mb-4 flex items-center justify-center">
+                  <span className="mr-2">✈️</span> Flight Offers
+                </h4>
+                <div className="prose prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-purple-100 text-sm leading-relaxed"
+                       dangerouslySetInnerHTML={{ __html: formatOffers(offerData.offers.flight).replace(/\*\*/g, '') }} />
+                </div>
+              </div>
+
+              {/* Tour Offers Card */}
+              <div className="bg-gradient-to-br from-pink-900 to-pink-700 rounded-2xl shadow-xl p-6 min-h-[400px] border-2 border-pink-400/30">
+                <h4 className="text-xl font-bold text-pink-200 mb-4 flex items-center justify-center">
+                  <span className="mr-2">🗺️</span> Tour Offers
+                </h4>
+                <div className="prose prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-pink-100 text-sm leading-relaxed"
+                       dangerouslySetInnerHTML={{ __html: formatOffers(offerData.offers.tour).replace(/\*\*/g, '') }} />
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -147,4 +203,4 @@ const Offers = () => {
   );
 };
 
-export default Offers; 
+export default Offers;

@@ -1,8 +1,13 @@
+require('dotenv').config();
+// Verify OpenAI key is loaded
+console.log('OpenAI Key Loaded:', !!process.env.OPENAI_API_KEY);
+
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/database');
 const otpRoutes = require('./routes/otp');
 const cardRoutes = require('./routes/cards');
+const offersRoutes = require('./routes/offers');
 
 const app = express();
 
@@ -22,6 +27,7 @@ app.use(express.json());
 // Routes
 app.use('/api/otp', otpRoutes);
 app.use('/api/cards', cardRoutes);
+app.use('/api/offers', offersRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
